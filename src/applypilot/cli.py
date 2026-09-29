@@ -333,6 +333,24 @@ def dashboard() -> None:
 
 
 @app.command()
+def ui(
+    port: int = typer.Option(8765, "--port", "-p", help="Port for the local web UI."),
+    no_browser: bool = typer.Option(False, "--no-browser", help="Don't open the browser automatically."),
+) -> None:
+    """Open the local web UI (served on 127.0.0.1 only)."""
+    try:
+        from applypilot.ui.server import serve
+    except ImportError:
+        console.print(
+            "[red]The web UI needs extra dependencies.[/red]\n"
+            'Install them with: [bold]pip install "applypilot[ui]"[/bold]'
+        )
+        raise typer.Exit(code=1)
+
+    serve(port=port, open_browser=not no_browser)
+
+
+@app.command()
 def doctor() -> None:
     """Check your setup and diagnose missing requirements."""
     import shutil

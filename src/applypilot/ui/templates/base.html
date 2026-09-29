@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ApplyPilot{% endblock %}</title>
+  <link rel="stylesheet" href="/static/vendor/pico.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/vendor/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="container topbar">
+    <nav>
+      <ul><li><a href="/" class="brand"><strong>ApplyPilot</strong></a></li></ul>
+      <ul>
+        <li><a href="/jobs" {% if nav == "jobs" %}aria-current="page"{% endif %}>Ofertas</a></li>
+        <li><span class="soon" data-tooltip="Próximamente" data-placement="bottom">Setup</span></li>
+        <li><span class="soon" data-tooltip="Próximamente" data-placement="bottom">Pipeline</span></li>
+      </ul>
+    </nav>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="container muted"><small>ApplyPilot {{ version }} · UI local</small></footer>
+</body>
+</html>

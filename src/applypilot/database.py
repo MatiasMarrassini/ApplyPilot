@@ -129,7 +129,10 @@ def init_db(db_path: Path | str | None = None) -> sqlite3.Connection:
             last_attempted_at     TEXT,
             apply_duration_ms     INTEGER,
             apply_task_id         TEXT,
-            verification_confidence TEXT
+            verification_confidence TEXT,
+
+            -- User review
+            discarded_at          TEXT
         )
     """)
     conn.commit()
@@ -180,6 +183,8 @@ _ALL_COLUMNS: dict[str, str] = {
     "apply_duration_ms": "INTEGER",
     "apply_task_id": "TEXT",
     "verification_confidence": "TEXT",
+    # User review (set from the web UI; discarded jobs are skipped by every stage)
+    "discarded_at": "TEXT",
 }
 
 
@@ -384,16 +389,17 @@ def get_jobs_by_stage(conn: sqlite3.Connection | None = None,
         "discovered": "1=1",
         "pending_detail": "detail_scraped_at IS NULL",
         "enriched": "full_description IS NOT NULL",
-        "pending_score": "full_description IS NOT NULL AND fit_score IS NULL",
+        "pending_score": "full_description IS NOT NULL AND fit_score IS NULL AND discarded_at IS NULL",
         "scored": "fit_score IS NOT NULL",
         "pending_tailor": (
             "fit_score >= ? AND full_description IS NOT NULL "
-            "AND tailored_resume_path IS NULL AND COALESCE(tailor_attempts, 0) < 5"
+            "AND tailored_resume_path IS NULL AND COALESCE(tailor_attempts, 0) < 5 "
+            "AND discarded_at IS NULL"
         ),
         "tailored": "tailored_resume_path IS NOT NULL",
         "pending_apply": (
             "tailored_resume_path IS NOT NULL AND applied_at IS NULL "
-            "AND application_url IS NOT NULL"
+            "AND application_url IS NOT NULL AND discarded_at IS NULL"
         ),
         "applied": "applied_at IS NOT NULL",
     }

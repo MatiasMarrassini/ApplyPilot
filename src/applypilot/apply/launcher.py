@@ -135,6 +135,7 @@ def acquire_job(target_url: str | None = None, min_score: int = 7,
                   AND (apply_status IS NULL OR apply_status = 'failed')
                   AND (apply_attempts IS NULL OR apply_attempts < ?)
                   AND fit_score >= ?
+                  AND discarded_at IS NULL
                   {site_clause}
                   {url_clauses}
                 ORDER BY fit_score DESC, url

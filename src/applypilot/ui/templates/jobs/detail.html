@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title }} · ApplyPilot{% endblock %}
+{% block content %}
+<p><a href="/jobs" class="muted">← Volver a ofertas</a></p>
+
+<header class="job-header">
+  <div class="job-score">{% include "jobs/_score.html" %}</div>
+  <div>
+    <h2>{{ job.title or "(sin título)" }}</h2>
+    <p class="muted">
+      {{ job.site or "Fuente desconocida" }}
+      {% if job.location %} · {{ job.location }}{% endif %}
+      {% if job.salary %} · {{ job.salary }}{% endif %}
+      {% if job.discovered_at %} · encontrada el {{ job.discovered_at[:10] }}{% endif %}
+    </p>
+  </div>
+</header>
+
+{% include "jobs/_actions.html" %}
+
+<p class="links">
+  <a href="{{ job.url | http_url }}" target="_blank" rel="noopener noreferrer">Ver oferta original ↗</a>
+  {% if job.application_url and job.application_url != job.url %}
+  · <a href="{{ job.application_url | http_url }}" target="_blank" rel="noopener noreferrer">Formulario de postulación ↗</a>
+  {% endif %}
+</p>
+
+{% if job.apply_error %}
+<article class="notice-error"><strong>Error al aplicar:</strong> {{ job.apply_error }}</article>
+{% endif %}
+
+{% if job.score_reasoning %}
+{% set lines = job.score_reasoning.split("\n", 1) %}
+<section>
+  <h4>Por qué este puntaje</h4>
+  {% if lines|length > 1 %}
+  <p class="keywords">{{ lines[0] }}</p>
+  <p>{{ lines[1] }}</p>
+  {% else %}
+  <p>{{ lines[0] }}</p>
+  {% endif %}
+</section>
+{% endif %}
+
+<section>
+  <details {% if docs.cv.text %}open{% endif %}>
+    <summary><strong>CV personalizado</strong>
+      {% if not docs.cv.text %}<small class="muted"> — todavía no generado</small>{% endif %}</summary>
+    {% if docs.cv.text %}
+    {% if docs.cv.has_pdf %}<p><a href="/jobs/{{ job.id }}/cv.pdf" target="_blank">Abrir PDF ↗</a></p>{% endif %}
+    <pre class="doc">{{ docs.cv.text }}</pre>
+    {% else %}
+    <p class="muted">Se genera con <code>applypilot run tailor</code> para ofertas con puntaje suficiente.</p>
+    {% endif %}
+  </details>
+
+  <details {% if docs.cover.text %}open{% endif %}>
+    <summary><strong>Carta de presentación</strong>
+      {% if not docs.cover.text %}<small class="muted"> — todavía no generada</small>{% endif %}</summary>
+    {% if docs.cover.text %}
+    {% if docs.cover.has_pdf %}<p><a href="/jobs/{{ job.id }}/cover.pdf" target="_blank">Abrir PDF ↗</a></p>{% endif %}
+    <pre class="doc">{{ docs.cover.text }}</pre>
+    {% else %}
+    <p class="muted">Se genera con <code>applypilot run cover</code> después del CV personalizado.</p>
+    {% endif %}
+  </details>
+
+  <details>
+    <summary><strong>Descripción de la oferta</strong></summary>
+    {% set desc = job.full_description or job.description %}
+    {% if desc %}<pre class="doc">{{ desc }}</pre>
+    {% else %}<p class="muted">Sin descripción todavía (se obtiene con <code>applypilot run enrich</code>).</p>{% endif %}
+  </details>
+</section>
+{% endblock %}

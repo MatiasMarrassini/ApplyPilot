@@ -1,0 +1,34 @@
+{% if jobs %}
+<p class="muted"><small>{{ total }} oferta{{ "s" if total != 1 }}{% if pages > 1 %} · página {{ page }} de {{ pages }}{% endif %}</small></p>
+<div class="table-wrap">
+  <table class="striped jobs">
+    <thead>
+      <tr><th>Puntaje</th><th>Puesto</th><th>Fuente</th><th>Ubicación</th><th>Estado</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}{% include "jobs/_row.html" %}{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if pages > 1 %}
+<nav class="pager">
+  {% if page > 1 %}
+  <button class="secondary outline" hx-get="/jobs?page={{ page - 1 }}" hx-include="#filters"
+          hx-target="#results" hx-push-url="true">← Anterior</button>
+  {% endif %}
+  {% if page < pages %}
+  <button class="secondary outline" hx-get="/jobs?page={{ page + 1 }}" hx-include="#filters"
+          hx-target="#results" hx-push-url="true">Siguiente →</button>
+  {% endif %}
+</nav>
+{% endif %}
+{% else %}
+<article class="empty">
+  {% if counts.all == 0 %}
+  <p><strong>Todavía no hay ofertas.</strong></p>
+  <p class="muted">Ejecutá <code>applypilot run discover</code> para buscar ofertas. Pronto se va a poder lanzar desde acá.</p>
+  {% else %}
+  <p class="muted">Ninguna oferta coincide con estos filtros.</p>
+  {% endif %}
+</article>
+{% endif %}

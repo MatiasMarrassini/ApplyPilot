@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Ofertas · ApplyPilot{% endblock %}
+{% block content %}
+<h2>Ofertas</h2>
+
+<form id="filters" hx-get="/jobs" hx-target="#results" hx-push-url="true"
+      hx-trigger="change, input delay:300ms from:input[name=q], submit">
+  <div class="tabs" role="group">
+    {% for name, (label, _) in views.items() %}
+    <label class="tab">
+      <input type="radio" name="view" value="{{ name }}" {% if filters.view == name %}checked{% endif %}>
+      <span>{{ label }} <small class="count" id="count-{{ name }}">{{ counts[name] }}</small></span>
+    </label>
+    {% endfor %}
+  </div>
+
+  <div class="filter-row">
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Buscar puesto, empresa o ubicación…" aria-label="Buscar">
+    <select name="site" aria-label="Fuente">
+      <option value="">Todas las fuentes</option>
+      {% for s in sites %}<option value="{{ s }}" {% if filters.site == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+    <select name="min_score" aria-label="Puntaje mínimo">
+      <option value="">Cualquier puntaje</option>
+      {% for n in range(10, 0, -1) %}<option value="{{ n }}" {% if filters.min_score == n|string %}selected{% endif %}>≥ {{ n }}</option>{% endfor %}
+    </select>
+    <select name="sort" aria-label="Ordenar">
+      {% for name, (label, _) in sorts.items() %}<option value="{{ name }}" {% if filters.sort == name %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+</form>
+
+<div hidden hx-get="/jobs/counts" hx-trigger="counts-changed from:body" hx-swap="none"></div>
+
+<div id="results">
+  {% include "jobs/_results.html" %}
+</div>
+{% endblock %}

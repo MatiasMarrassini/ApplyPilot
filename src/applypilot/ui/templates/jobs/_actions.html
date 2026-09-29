@@ -1,0 +1,13 @@
+<div id="actions" class="actions">
+  <span class="status status-{{ job.status_class }}">{{ job.status_label }}</span>
+  {% if job.discarded_at %}
+  <button class="secondary" hx-post="/jobs/{{ job.id }}/restore" hx-vals='{"ctx": "detail"}' hx-target="#actions" hx-swap="outerHTML">Restaurar</button>
+  {% else %}
+  {% if job.applied_at %}
+  <button class="secondary outline" hx-post="/jobs/{{ job.id }}/unapply" hx-vals='{"ctx": "detail"}' hx-target="#actions" hx-swap="outerHTML">Desmarcar aplicada</button>
+  {% else %}
+  <button hx-post="/jobs/{{ job.id }}/applied" hx-vals='{"ctx": "detail"}' hx-target="#actions" hx-swap="outerHTML">Ya apliqué</button>
+  {% endif %}
+  <button class="secondary outline" hx-post="/jobs/{{ job.id }}/discard" hx-vals='{"ctx": "detail"}' hx-target="#actions" hx-swap="outerHTML">Descartar</button>
+  {% endif %}
+</div>

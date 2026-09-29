@@ -1,0 +1,3 @@
+{% if job.fit_score is not none %}
+<span class="score score-{{ 'high' if job.fit_score >= 7 else ('mid' if job.fit_score >= 5 else 'low') }}">{{ job.fit_score }}</span>
+{% else %}<span class="score score-none" title="Sin puntuar">–</span>{% endif %}

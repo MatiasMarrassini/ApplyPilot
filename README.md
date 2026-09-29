@@ -158,6 +158,18 @@ applypilot apply --gen --url URL       # generate prompt file for manual debuggi
 
 ---
 
+## Web UI (local)
+
+```bash
+pip install "applypilot[ui]"
+applypilot ui              # opens http://127.0.0.1:8765
+applypilot ui --port 9000 --no-browser
+```
+
+Browse discovered jobs, filter by score/source/status, read the scoring reasoning, tailored resume and cover letter per job, and mark jobs as applied or discarded. Discarded jobs are skipped by every pipeline stage (enrich, score, tailor, cover, apply). The server only listens on 127.0.0.1.
+
+---
+
 ## CLI Reference
 
 ```
@@ -178,6 +190,7 @@ applypilot apply --headless             # Headless browser mode
 applypilot apply --url URL              # Apply to a specific job
 applypilot status                       # Pipeline statistics
 applypilot dashboard                    # Open HTML results dashboard
+applypilot ui                           # Local web UI (needs applypilot[ui])
 ```
 
 ---
