@@ -1,0 +1,58 @@
+<div id="stages" hx-get="/pipeline/stages" hx-trigger="run-finished from:body" hx-swap="outerHTML">
+  {% for msg, href in warnings %}
+  <article class="notice notice-warn"><small>{{ msg }} <a href="{{ href }}">Configurar →</a></small></article>
+  {% endfor %}
+
+  <form hx-post="/pipeline/run" hx-target="#stages" hx-swap="outerHTML">
+    <div class="stage-list">
+      {% for s in stages %}
+      {% set locked = s.ai and not has_llm %}
+      <label class="stage {{ 'locked' if locked }}">
+        <input type="checkbox" name="stages" value="{{ s.key }}" {% if locked %}disabled{% endif %}>
+        <span class="stage-num">{{ loop.index }}</span>
+        <span class="stage-body">
+          <strong>{{ s.title }}</strong>{% if s.ai %} <small class="ai-tag">IA</small>{% endif %}
+          <small>{{ s.desc }}</small>
+          {% if locked %}<small class="field-error">Necesita una <a href="/setup/keys">clave de IA</a>.</small>
+          {% elif s.key in pending %}<small class="pending">{{ pending[s.key] }} pendiente{{ "s" if pending[s.key] != 1 }}</small>{% endif %}
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <details class="options">
+      <summary>Opciones avanzadas</summary>
+      <div class="grid-fields three">
+        <label>
+          Puntaje mínimo para personalizar
+          <select name="min_score">
+            {% for n in range(10, 0, -1) %}<option value="{{ n }}" {% if n == min_score %}selected{% endif %}>{{ n }}</option>{% endfor %}
+          </select>
+          <small>Solo se escriben CVs y cartas para ofertas con este puntaje o más.</small>
+        </label>
+        <label>
+          Procesos en paralelo
+          <select name="workers">
+            {% for n in [1, 2, 3, 4, 6, 8] %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+          </select>
+          <small>Acelera la búsqueda y las descripciones. Más de 2–3 puede hacer que los portales te bloqueen.</small>
+        </label>
+        <label>
+          Validación de la IA
+          <select name="validation">
+            {% for key, label in validation_modes.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+    </details>
+
+    <div class="run-buttons">
+      <button type="submit">Ejecutar seleccionadas</button>
+      {% for key, (label, keys) in presets.items() %}
+      {% set needs_ai = not has_llm and key != "find" %}
+      <button type="submit" name="preset" value="{{ key }}" class="secondary outline" {% if needs_ai %}disabled{% endif %}>{{ label }}</button>
+      {% endfor %}
+      {% if error %}<span class="field-error" role="alert">{{ error }}</span>{% endif %}
+    </div>
+  </form>
+</div>

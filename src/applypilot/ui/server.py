@@ -14,6 +14,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from applypilot.config import ensure_dirs, load_env
 from applypilot.database import init_db
 from applypilot.ui import jobs
+from applypilot.ui.pipeline_routes import router as pipeline_router
 from applypilot.ui.setup_routes import router as setup_router
 from applypilot.ui.templating import UI_DIR, templates
 
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
     app.mount("/static", StaticFiles(directory=UI_DIR / "static"), name="static")
     app.include_router(setup_router)
+    app.include_router(pipeline_router)
 
     @app.middleware("http")
     async def require_htmx_for_writes(request: Request, call_next):

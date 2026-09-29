@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Pipeline · ApplyPilot{% endblock %}
+{% block content %}
+<h2>Pipeline</h2>
+<p class="muted">Cada etapa trabaja sobre lo que dejó la anterior. Podés correr todo junto o de a partes; lo que ya está hecho no se repite.</p>
+
+{% include "pipeline/_stages.html" %}
+{% include "pipeline/_run.html" %}
+
+<script>
+  // Keep the log pinned to the bottom while it updates, unless the user scrolled up.
+  let pinned = true;
+  document.body.addEventListener("htmx:beforeSwap", (e) => {
+    const log = document.getElementById("log");
+    if (e.detail.target.id === "run-panel" && log) {
+      pinned = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+    }
+  });
+  document.body.addEventListener("htmx:afterSettle", () => {
+    const log = document.getElementById("log");
+    if (log && pinned) log.scrollTop = log.scrollHeight;
+  });
+  window.addEventListener("load", () => {
+    const log = document.getElementById("log");
+    if (log) log.scrollTop = log.scrollHeight;
+  });
+</script>
+{% endblock %}

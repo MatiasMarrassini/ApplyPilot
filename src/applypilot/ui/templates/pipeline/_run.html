@@ -1,0 +1,27 @@
+{% if run and run.running %}
+<section id="run-panel" data-running hx-get="/pipeline/status?was_running=true" hx-trigger="every 1s" hx-swap="outerHTML">
+{% else %}
+<section id="run-panel" hx-get="/pipeline/status" hx-trigger="run-started from:body" hx-swap="outerHTML">
+{% endif %}
+  {% if run %}
+  <article class="run">
+    <header class="run-header">
+      <div>
+        <strong>{{ run.title }}</strong>
+        <span class="run-status run-{{ run.status }}">{{ {"running": "En curso", "ok": "Terminado", "error": "Terminó con errores", "cancelled": "Detenido"}[run.status] }}</span>
+        <small class="muted">{{ (run.elapsed // 60)|int }}:{{ "%02d" % ((run.elapsed % 60)|int) }}</small>
+      </div>
+      {% if run.running %}
+      <button class="secondary outline small" hx-post="/pipeline/stop" hx-target="#run-panel" hx-swap="outerHTML">Detener</button>
+      {% elif run.status == "ok" %}
+      <a href="/jobs" role="button" class="small">Ver ofertas →</a>
+      {% endif %}
+    </header>
+    <pre id="log" class="log">{% for line in log %}{{ line }}
+{% else %}Iniciando…{% endfor %}</pre>
+    <footer class="muted"><small><code>{{ run.command }}</code> · log completo en <code>{{ run.log_path }}</code></small></footer>
+  </article>
+  {% else %}
+  <p class="muted"><small>Todavía no ejecutaste nada desde que abriste la interfaz.</small></p>
+  {% endif %}
+</section>
