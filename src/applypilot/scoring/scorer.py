@@ -17,6 +17,10 @@ from applypilot.llm import get_client
 
 log = logging.getLogger(__name__)
 
+# Stop the run after this many LLM failures in a row: it's a config problem
+# (bad model name, invalid key), not a flaky job, so don't burn through the queue.
+MAX_CONSECUTIVE_ERRORS = 3
+
 
 # ── Scoring Prompt ────────────────────────────────────────────────────────
 
@@ -98,7 +102,7 @@ def score_job(resume_text: str, job: dict) -> dict:
         return _parse_score_response(response)
     except Exception as e:
         log.error("LLM error scoring job '%s': %s", job.get("title", "?"), e)
-        return {"score": 0, "keywords": "", "reasoning": f"LLM error: {e}"}
+        return {"score": 0, "keywords": "", "reasoning": f"LLM error: {e}", "error": str(e)}
 
 
 def run_scoring(limit: int = 0, rescore: bool = False) -> dict:
@@ -137,22 +141,33 @@ def run_scoring(limit: int = 0, rescore: bool = False) -> dict:
     errors = 0
     results: list[dict] = []
 
+    consecutive_errors = 0
+    last_error = ""
     for job in jobs:
         result = score_job(resume_text, job)
         result["url"] = job["url"]
         completed += 1
 
-        if result["score"] == 0:
+        if result.get("error"):
             errors += 1
+            consecutive_errors += 1
+            last_error = result["error"]
+            log.info("[%d/%d] ERROR  %s", completed, len(jobs), job.get("title", "?")[:60])
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                log.error("Stopping scoring after %d failed LLM calls in a row. Last error: %s",
+                          consecutive_errors, last_error)
+                break
+            continue
 
+        consecutive_errors = 0
         results.append(result)
-
         log.info(
             "[%d/%d] score=%d  %s",
             completed, len(jobs), result["score"], job.get("title", "?")[:60],
         )
 
-    # Write scores to DB
+    # Write scores to DB. Failed calls are not written, so those jobs stay
+    # unscored and get retried on the next run instead of being stuck at 0.
     now = datetime.now(timezone.utc).isoformat()
     for r in results:
         conn.execute(
@@ -171,6 +186,9 @@ def run_scoring(limit: int = 0, rescore: bool = False) -> dict:
         GROUP BY fit_score ORDER BY fit_score DESC
     """).fetchall()
     distribution = [(row[0], row[1]) for row in dist]
+
+    if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+        raise RuntimeError(f"LLM calls are failing: {last_error}")
 
     return {
         "scored": len(results),

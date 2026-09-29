@@ -12,6 +12,7 @@ LLM_MODEL env var overrides the model name for any provider.
 import logging
 import os
 import time
+from collections.abc import Mapping
 
 import httpx
 
@@ -27,10 +28,19 @@ def _detect_provider() -> tuple[str, str, str]:
     Reads env at call time (not module import time) so that load_env() called
     in _bootstrap() is always visible here.
     """
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    openai_key = os.environ.get("OPENAI_API_KEY", "")
-    local_url = os.environ.get("LLM_URL", "")
-    model_override = os.environ.get("LLM_MODEL", "")
+    return resolve_provider(os.environ)
+
+
+def resolve_provider(env: Mapping[str, str]) -> tuple[str, str, str]:
+    """Return (base_url, model, api_key) for a set of config values.
+
+    Separate from _detect_provider() so the web UI can test settings that
+    haven't been saved yet.
+    """
+    gemini_key = env.get("GEMINI_API_KEY", "")
+    openai_key = env.get("OPENAI_API_KEY", "")
+    local_url = env.get("LLM_URL", "")
+    model_override = env.get("LLM_MODEL", "")
 
     if gemini_key and not local_url:
         return (
@@ -50,7 +60,7 @@ def _detect_provider() -> tuple[str, str, str]:
         return (
             local_url.rstrip("/"),
             model_override or "local-model",
-            os.environ.get("LLM_API_KEY", ""),
+            env.get("LLM_API_KEY", ""),
         )
 
     raise RuntimeError(
@@ -84,11 +94,13 @@ class LLMClient:
     for the lifetime of the process.
     """
 
-    def __init__(self, base_url: str, model: str, api_key: str) -> None:
+    def __init__(self, base_url: str, model: str, api_key: str,
+                 max_retries: int = _MAX_RETRIES, timeout: float = _TIMEOUT) -> None:
         self.base_url = base_url
         self.model = model
         self.api_key = api_key
-        self._client = httpx.Client(timeout=_TIMEOUT)
+        self.max_retries = max_retries
+        self._client = httpx.Client(timeout=timeout)
         # True once we've confirmed the native Gemini API works for this model
         self._use_native_gemini: bool = False
         self._is_gemini: bool = base_url.startswith(_GEMINI_COMPAT_BASE)
@@ -199,7 +211,7 @@ class LLMClient:
             if first.get("role") == "user" and not first["content"].startswith("/no_think"):
                 messages = [{"role": first["role"], "content": f"/no_think\n{first['content']}"}] + messages[1:]
 
-        for attempt in range(_MAX_RETRIES):
+        for attempt in range(self.max_retries):
             try:
                 # Route to native Gemini if we've already confirmed it's needed
                 if self._use_native_gemini:
@@ -228,7 +240,7 @@ class LLMClient:
 
             except httpx.HTTPStatusError as exc:
                 resp = exc.response
-                if resp.status_code in (429, 503) and attempt < _MAX_RETRIES - 1:
+                if resp.status_code in (429, 503) and attempt < self.max_retries - 1:
                     # Respect Retry-After header if provided (Gemini sends this).
                     retry_after = (
                         resp.headers.get("Retry-After")
@@ -246,18 +258,20 @@ class LLMClient:
                         "LLM rate limited (HTTP %s). Waiting %ds before retry %d/%d. "
                         "Tip: Gemini free tier = 15 RPM. Consider a paid account "
                         "or switching to a local model.",
-                        resp.status_code, wait, attempt + 1, _MAX_RETRIES,
+                        resp.status_code, wait, attempt + 1, self.max_retries,
                     )
                     time.sleep(wait)
                     continue
-                raise
+                # Surface the provider's explanation ("model not found", "API key
+                # not valid", ...) instead of a bare "400 Bad Request".
+                raise LLMError(f"HTTP {resp.status_code}: {_error_detail(resp)}") from exc
 
             except httpx.TimeoutException:
-                if attempt < _MAX_RETRIES - 1:
+                if attempt < self.max_retries - 1:
                     wait = min(_RATE_LIMIT_BASE_WAIT * (2 ** attempt), 60)
                     log.warning(
                         "LLM request timed out, retrying in %ds (attempt %d/%d)",
-                        wait, attempt + 1, _MAX_RETRIES,
+                        wait, attempt + 1, self.max_retries,
                     )
                     time.sleep(wait)
                     continue
@@ -265,12 +279,37 @@ class LLMClient:
 
         raise RuntimeError("LLM request failed after all retries")
 
+    def list_models(self) -> list[str]:
+        """Model IDs the endpoint offers for this key (OpenAI-compatible /models)."""
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        resp = self._client.get(f"{self.base_url}/models", headers=headers)
+        resp.raise_for_status()
+        return sorted(m["id"].removeprefix("models/") for m in resp.json().get("data", []))
+
     def ask(self, prompt: str, **kwargs) -> str:
         """Convenience: single user prompt -> assistant response."""
         return self.chat([{"role": "user", "content": prompt}], **kwargs)
 
     def close(self) -> None:
         self._client.close()
+
+
+class LLMError(RuntimeError):
+    """The provider rejected the request (bad model name, invalid key, ...)."""
+
+
+def _error_detail(resp: httpx.Response) -> str:
+    """Pull the human-readable message out of an error response."""
+    try:
+        data = resp.json()
+        if isinstance(data, list) and data:  # Gemini compat wraps errors in a list
+            data = data[0]
+        err = data.get("error", data) if isinstance(data, dict) else data
+        if isinstance(err, dict) and err.get("message"):
+            return str(err["message"])[:300]
+    except ValueError:
+        pass
+    return resp.text[:300] or resp.reason_phrase
 
 
 class _GeminiCompatForbidden(Exception):

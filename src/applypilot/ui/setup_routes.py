@@ -209,3 +209,9 @@ async def keys_save(request: Request):
         # Keep the provider the user picked so the right fields stay visible.
         ctx["v"]["provider"] = form.get("provider") or ctx["v"]["provider"]
     return _form_or_page(request, "setup/_keys_form.html", "setup/keys.html", "keys", **ctx)
+
+
+@router.post("/keys/test", response_class=HTMLResponse)
+async def keys_test(request: Request):
+    form = await request.form()
+    return templates.TemplateResponse(request, "setup/_llm_test.html", {"result": settings.test_llm(form)})

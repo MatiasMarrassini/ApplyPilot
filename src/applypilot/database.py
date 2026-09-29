@@ -139,8 +139,23 @@ def init_db(db_path: Path | str | None = None) -> sqlite3.Connection:
 
     # Run migrations for any columns added after initial schema
     ensure_columns(conn)
+    _reset_failed_scores(conn)
 
     return conn
+
+
+def _reset_failed_scores(conn: sqlite3.Connection) -> None:
+    """Un-score jobs whose "score" was really an LLM error.
+
+    Older versions stored failed scoring calls as fit_score=0, which marked
+    them as scored forever. Clearing them lets the next run retry.
+    """
+    cur = conn.execute(
+        "UPDATE jobs SET fit_score = NULL, score_reasoning = NULL, scored_at = NULL "
+        "WHERE fit_score = 0 AND score_reasoning LIKE '%LLM error:%'"
+    )
+    if cur.rowcount:
+        conn.commit()
 
 
 # Complete column registry: column_name -> SQL type with optional default.

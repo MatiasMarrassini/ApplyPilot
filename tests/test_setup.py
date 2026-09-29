@@ -156,3 +156,41 @@ def test_eeo_choices_normalize_and_accept_other(client):
 def test_skill_placeholders_differ_by_category(client):
     page = client.get("/setup/profile").text
     assert "Ej.: Docker, AWS, CI/CD" in page and "Ej.: PostgreSQL, MongoDB, Redis" in page
+
+
+def test_connection_test_button(client, monkeypatch):
+    from applypilot import llm
+    from applypilot.llm import LLMError
+
+    monkeypatch.setattr(llm.LLMClient, "chat", lambda self, *a, **k: (_ for _ in ()).throw(
+        LLMError("HTTP 400: Model not found")))
+    monkeypatch.setattr(llm.LLMClient, "list_models", lambda self: ["gemini-2.5-flash", "embedding-001"])
+    r = client.post("/setup/keys/test", data={"provider": "gemini", "GEMINI_API_KEY": "k",
+                                              "LLM_MODEL": "Gemini 3.1 Flash Lite"}, headers=HX)
+    assert "No funcionó" in r.text and "Model not found" in r.text
+    assert 'data-model="gemini-2.5-flash"' in r.text and "embedding-001" not in r.text
+
+    monkeypatch.setattr(llm.LLMClient, "chat", lambda self, *a, **k: "OK")
+    r = client.post("/setup/keys/test", data={"provider": "gemini", "GEMINI_API_KEY": "k"}, headers=HX)
+    assert "Funciona" in r.text and "gemini-2.0-flash" in r.text
+
+    r = client.post("/setup/keys/test", data={"provider": "gemini"}, headers=HX)
+    assert "Falta la API key" in r.text
+
+
+def test_model_display_name_is_rejected(client):
+    r = client.post("/setup/keys", data={"provider": "gemini", "GEMINI_API_KEY": "k",
+                                         "LLM_MODEL": "Gemini 3.1 Flash Lite"}, headers=HX)
+    assert "sin espacios" in r.text
+    assert not config.ENV_PATH.exists() or "LLM_MODEL" not in config.ENV_PATH.read_text(encoding="utf-8")
+
+
+def test_connection_test_reports_busy_provider_as_valid_config(client, monkeypatch):
+    from applypilot import llm
+    from applypilot.llm import LLMError
+
+    monkeypatch.setattr(llm.LLMClient, "chat", lambda self, *a, **k: (_ for _ in ()).throw(
+        LLMError("HTTP 503: This model is currently experiencing high demand.")))
+    r = client.post("/setup/keys/test", data={"provider": "gemini", "GEMINI_API_KEY": "k",
+                                              "LLM_MODEL": "gemini-3.1-flash-lite"}, headers=HX)
+    assert "son válidos" in r.text and "No funcionó" not in r.text

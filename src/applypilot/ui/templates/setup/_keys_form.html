@@ -41,9 +41,18 @@
     <label>
       Modelo
       <input type="text" name="LLM_MODEL" value="{{ v.LLM_MODEL }}"
-             placeholder="Por defecto: {{ providers[v.provider][2] }}">
-      <small>Dejalo vacío para usar el modelo por defecto del proveedor.</small>
+             placeholder="Por defecto: {{ providers[v.provider][2] }}" {% if errors.LLM_MODEL %}aria-invalid="true"{% endif %}>
+      {% if errors.LLM_MODEL %}<small class="field-error">{{ errors.LLM_MODEL }}</small>
+      {% else %}<small>El identificador técnico, por ejemplo <code>gemini-2.5-flash</code>. Dejalo vacío para usar el modelo por defecto.</small>{% endif %}
     </label>
+
+    <div class="llm-test">
+      <button type="button" class="secondary outline" hx-post="/setup/keys/test" hx-include="closest form"
+              hx-target="#llm-test-result" hx-swap="innerHTML" hx-disabled-elt="this">Probar conexión</button>
+      <span class="htmx-indicator muted"><small>Probando…</small></span>
+      <small class="muted">Manda un mensaje mínimo con lo que escribiste, aunque no lo hayas guardado.</small>
+    </div>
+    <div id="llm-test-result"></div>
     <p class="muted"><small>Si cambiás de proveedor, se reemplaza la configuración del anterior.</small></p>
   </fieldset>
 

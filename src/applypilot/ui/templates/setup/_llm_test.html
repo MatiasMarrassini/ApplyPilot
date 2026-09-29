@@ -1,0 +1,29 @@
+{% if result.ok %}
+<article class="notice notice-ok" role="status">
+  <strong>✓ Funciona.</strong> El modelo <code>{{ result.model }}</code> respondió en {{ "%.1f" % result.seconds }} s.
+  {% if result.reply %}<small class="muted">Respuesta: “{{ result.reply }}”</small>{% endif %}
+</article>
+{% elif result.busy %}
+<article class="notice notice-warn" role="status">
+  <strong>≈ La clave y el modelo son válidos, pero el proveedor está ocupado.</strong>
+  {% if result.error.startswith("HTTP 429") %}Llegaste al límite de uso de tu plan (en el plan gratuito se renueva con el tiempo).
+  {% else %}El modelo tiene mucha demanda en este momento.{% endif %}
+  Podés guardar: el pipeline reintenta solo con espera. Si persiste, probá otro modelo.
+  <pre class="error-detail">{{ result.error }}</pre>
+</article>
+{% else %}
+<article class="notice notice-error" role="alert">
+  <strong>✗ No funcionó.</strong>
+  {% if result.model %}Modelo probado: <code>{{ result.model }}</code>.{% endif %}
+  <pre class="error-detail">{{ result.error }}</pre>
+  {% if result.models %}
+  <p><small>Modelos disponibles para tu clave. Hacé clic en uno para usarlo, probá de nuevo y guardá:</small></p>
+  <div class="model-chips">
+    {% for m in result.models %}
+    <button type="button" class="chip" data-model="{{ m }}"
+            onclick="this.form.elements.LLM_MODEL.value = this.dataset.model">{{ m }}</button>
+    {% endfor %}
+  </div>
+  {% endif %}
+</article>
+{% endif %}

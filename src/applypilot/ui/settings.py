@@ -7,8 +7,10 @@ form manages, so hand-edited or unknown keys survive a save.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
+import time
 from dataclasses import dataclass, field
 
 import yaml
@@ -500,7 +502,11 @@ def save_keys(form) -> dict[str, str]:
         if provider == "openai":
             updates["GEMINI_API_KEY"] = None  # Gemini takes precedence over OpenAI
 
-    updates["LLM_MODEL"] = (form.get("LLM_MODEL") or "").strip() or None
+    model = (form.get("LLM_MODEL") or "").strip()
+    if re.search(r"\s", model):
+        errors["LLM_MODEL"] = ("Usá el identificador del modelo, sin espacios (por ejemplo gemini-2.5-flash), "
+                               "no el nombre comercial. \"Probar conexión\" te muestra los disponibles.")
+    updates["LLM_MODEL"] = model or None
     updates["CAPSOLVER_API_KEY"] = secret("CAPSOLVER_API_KEY")
     updates["PROXY"] = (form.get("PROXY") or "").strip() or None
     updates["CHROME_PATH"] = (form.get("CHROME_PATH") or "").strip() or None
@@ -508,3 +514,55 @@ def save_keys(form) -> dict[str, str]:
     if not errors:
         update_env(updates)
     return errors
+
+
+def _llm_env_from_form(form) -> dict[str, str]:
+    """Config values for a connection test: typed values win, blanks fall back to .env."""
+    saved = read_env()
+    provider = form.get("provider") or "gemini"
+
+    def pick(name: str) -> str:
+        return (form.get(name) or "").strip() or saved.get(name, "")
+
+    env = {"LLM_MODEL": (form.get("LLM_MODEL") or "").strip()}
+    if provider == "local":
+        env["LLM_URL"] = (form.get("LLM_URL") or "").strip()
+        env["LLM_API_KEY"] = pick("LLM_API_KEY")
+    elif provider in PROVIDERS:
+        key_name = PROVIDERS[provider][1]
+        env[key_name] = pick(key_name)
+    return env
+
+
+def test_llm(form) -> dict:
+    """Send one tiny request with the form's settings. Never raises."""
+    from applypilot.llm import LLMClient, resolve_provider
+
+    env = _llm_env_from_form(form)
+    try:
+        base_url, model, api_key = resolve_provider(env)
+    except RuntimeError:
+        return {"ok": False, "error": "Falta la API key (o la URL del servidor local)."}
+
+    client = LLMClient(base_url, model, api_key, max_retries=1, timeout=30)
+    try:
+        start = time.monotonic()
+        reply = client.chat([{"role": "user", "content": "Reply with the single word OK."}], max_tokens=256)
+        return {"ok": True, "model": model, "seconds": time.monotonic() - start, "reply": (reply or "").strip()[:80]}
+    except Exception as e:  # noqa: BLE001 - any failure is shown to the user
+        result = {"ok": False, "model": model, "error": str(e) or type(e).__name__, "models": []}
+        # Overloaded / rate-limited: the key and model are valid, the provider is just busy.
+        # The pipeline retries these with backoff, so don't report a config error.
+        result["busy"] = result["error"].startswith(("HTTP 429", "HTTP 503"))
+        if result["busy"]:
+            return result
+        try:
+            models = client.list_models()
+            if "generativelanguage" in base_url:
+                models = [m for m in models if "gemini" in m]
+            result["models"] = models[:40]
+        except Exception:  # the model list is only a hint
+            logging.getLogger(__name__).debug("Could not list models", exc_info=True)
+        return result
+    finally:
+        client.close()
