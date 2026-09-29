@@ -1,0 +1,7 @@
+{% extends "setup/layout.html" %}
+{% block setup_content %}
+{% if is_new %}
+<article class="notice">Todavía no tenés perfil. Completá al menos los campos marcados con <span class="req">*</span> y guardá.</article>
+{% endif %}
+{% include "setup/_profile_form.html" %}
+{% endblock %}

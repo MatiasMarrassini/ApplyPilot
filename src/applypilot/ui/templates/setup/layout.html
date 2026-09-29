@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Setup · ApplyPilot{% endblock %}
+{% block content %}
+<h2>Setup</h2>
+<nav class="subnav" aria-label="Secciones de setup">
+  {% for key, label, href in [
+      ("overview", "Resumen", "/setup"),
+      ("profile", "Perfil", "/setup/profile"),
+      ("resume", "CV", "/setup/resume"),
+      ("searches", "Búsquedas", "/setup/searches"),
+      ("keys", "Claves de IA", "/setup/keys")] %}
+  <a href="{{ href }}" {% if section == key %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+{% block setup_content %}{% endblock %}
+{% endblock %}

@@ -1,0 +1,77 @@
+{% from "setup/_macros.html" import save_bar %}
+<form hx-post="/setup/searches" hx-target="this" hx-swap="outerHTML" class="setup-form">
+  <fieldset>
+    <legend><strong>Puestos a buscar</strong></legend>
+    <p class="muted"><small>Uno por línea. Las búsquedas de prioridad alta se hacen primero; las de baja prioridad traen más volumen pero menos precisión.</small></p>
+    <div class="grid-fields three">
+      {% for t, label in [(1, "Prioridad alta"), (2, "Prioridad media"), (3, "Prioridad baja")] %}
+      <label>
+        {{ label }}
+        <textarea name="tier{{ t }}" rows="6" placeholder="Ej.: {{ ['Backend Engineer', 'Python Developer', 'Software Developer'][t - 1] }}"
+                  {% if errors['tier' ~ t] %}aria-invalid="true"{% endif %}>{{ v.tiers[t] }}</textarea>
+        {% if errors['tier' ~ t] %}<small class="field-error">{{ errors['tier' ~ t] }}</small>{% endif %}
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend><strong>Dónde buscar</strong></legend>
+    <p class="muted"><small>Cada puesto se busca en cada ubicación. Marcá "Remoto" para pedir solo ofertas remotas en esa búsqueda. Dejá una fila vacía para quitarla.</small></p>
+    {% for loc, remote in v.locations %}
+    <div class="loc-row">
+      <input type="text" name="loc.{{ loop.index0 }}" value="{{ loc }}" placeholder="{{ 'Ej.: Buenos Aires, Argentina' if loop.first else '' }}" aria-label="Ubicación">
+      <label class="inline"><input type="checkbox" name="loc_remote.{{ loop.index0 }}" role="switch" {% if remote %}checked{% endif %}> Remoto</label>
+    </div>
+    {% endfor %}
+    {% if errors.locations %}<small class="field-error">{{ errors.locations }}</small>{% endif %}
+  </fieldset>
+
+  <fieldset>
+    <legend><strong>Filtro de ubicación</strong></legend>
+    <p class="muted"><small>Las ofertas remotas siempre se aceptan. Para las presenciales o híbridas, se guardan solo las que contienen alguno de estos textos en la ubicación.</small></p>
+    {% if not v.accept %}
+    <article class="notice notice-warn"><small><strong>Sin ciudades aceptadas se descartan todas las ofertas presenciales e híbridas</strong>: solo vas a ver ofertas remotas.</small></article>
+    {% endif %}
+    <div class="grid-fields">
+      <label>
+        Aceptar (una por línea)
+        <textarea name="accept" rows="4" placeholder="Ej.:&#10;Buenos Aires&#10;CABA">{{ v.accept }}</textarea>
+      </label>
+      <label>
+        Rechazar (una por línea)
+        <textarea name="reject" rows="4" placeholder="Ej.: Córdoba">{{ v.reject }}</textarea>
+        <small>Tiene prioridad sobre "Aceptar".</small>
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend><strong>Portales</strong></legend>
+    <div class="boards">
+      {% for key, label in boards %}
+      <label class="inline"><input type="checkbox" name="sites" value="{{ key }}" {% if key in v.sites %}checked{% endif %}> {{ label }}</label>
+      {% endfor %}
+    </div>
+    {% if errors.sites %}<small class="field-error">{{ errors.sites }}</small>{% endif %}
+    <p class="muted"><small>Además de estos portales, ApplyPilot siempre revisa los portales Workday y los sitios de empleo directos que trae configurados.</small></p>
+    <div class="grid-fields three">
+      <label>
+        Resultados por portal
+        <input type="number" name="results_per_site" value="{{ v.results_per_site }}" min="1" max="500">
+      </label>
+      <label>
+        Antigüedad máxima (horas)
+        <input type="number" name="hours_old" value="{{ v.hours_old }}" min="1">
+        <small>72 = últimos 3 días.</small>
+      </label>
+      <label>
+        País para Indeed / Google
+        <input type="text" name="country_indeed" value="{{ v.country_indeed }}" placeholder="usa">
+        <small>En inglés y minúsculas, por ejemplo <code>argentina</code>.</small>
+      </label>
+    </div>
+  </fieldset>
+
+  {{ save_bar(saved, errors, "Guardar búsquedas") }}
+</form>

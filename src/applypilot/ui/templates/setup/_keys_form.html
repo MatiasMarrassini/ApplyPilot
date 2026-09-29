@@ -1,0 +1,66 @@
+{% from "setup/_macros.html" import save_bar %}
+{% macro secret(name, label, hint="") %}
+<label>
+  {{ label }}
+  <input type="password" name="{{ name }}" autocomplete="off"
+         placeholder="{{ ('Guardada: ' ~ v.masked[name] ~ ' — dejalo vacío para mantenerla') if v.masked[name] else 'Pegá tu clave' }}"
+         {% if errors[name] %}aria-invalid="true"{% endif %}>
+  {% if errors[name] %}<small class="field-error">{{ errors[name] }}</small>{% elif hint %}<small>{{ hint | safe }}</small>{% endif %}
+</label>
+{% if v.masked[name] %}
+<label class="inline clear-secret"><input type="checkbox" name="clear_{{ name }}"> Borrar la clave guardada</label>
+{% endif %}
+{% endmacro %}
+
+<form hx-post="/setup/keys" hx-target="this" hx-swap="outerHTML" class="setup-form" id="keys-form">
+  <fieldset>
+    <legend><strong>Modelo de IA</strong></legend>
+    <p class="muted"><small>Puntúa ofertas y escribe tus CVs y cartas. Gemini tiene un plan gratuito que alcanza para empezar.</small></p>
+    <div class="providers">
+      {% for key, (label, _, _) in providers.items() %}
+      <label class="inline"><input type="radio" name="provider" value="{{ key }}" {% if v.provider == key %}checked{% endif %}> {{ label }}</label>
+      {% endfor %}
+    </div>
+
+    <div class="provider-fields" data-provider="gemini">
+      {{ secret("GEMINI_API_KEY", "Gemini API key", 'Conseguila gratis en <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a>.') }}
+    </div>
+    <div class="provider-fields" data-provider="openai">
+      {{ secret("OPENAI_API_KEY", "OpenAI API key") }}
+    </div>
+    <div class="provider-fields" data-provider="local">
+      <label>
+        URL del servidor
+        <input type="text" name="LLM_URL" value="{{ v.LLM_URL }}" placeholder="http://localhost:11434/v1"
+               {% if errors.LLM_URL %}aria-invalid="true"{% endif %}>
+        {% if errors.LLM_URL %}<small class="field-error">{{ errors.LLM_URL }}</small>{% endif %}
+      </label>
+      {{ secret("LLM_API_KEY", "API key del servidor (si hace falta)") }}
+    </div>
+
+    <label>
+      Modelo
+      <input type="text" name="LLM_MODEL" value="{{ v.LLM_MODEL }}"
+             placeholder="Por defecto: {{ providers[v.provider][2] }}">
+      <small>Dejalo vacío para usar el modelo por defecto del proveedor.</small>
+    </label>
+    <p class="muted"><small>Si cambiás de proveedor, se reemplaza la configuración del anterior.</small></p>
+  </fieldset>
+
+  <fieldset>
+    <legend><strong>Opcional</strong></legend>
+    {{ secret("CAPSOLVER_API_KEY", "CapSolver API key", "Resuelve CAPTCHAs durante el auto-apply. Sin ella, las postulaciones con CAPTCHA fallan.") }}
+    <div class="grid-fields">
+      <label>
+        Proxy para scraping
+        <input type="text" name="PROXY" value="{{ v.PROXY }}" placeholder="host:puerto:usuario:contraseña">
+      </label>
+      <label>
+        Ruta de Chrome
+        <input type="text" name="CHROME_PATH" value="{{ v.CHROME_PATH }}" placeholder="Se detecta automáticamente">
+      </label>
+    </div>
+  </fieldset>
+
+  {{ save_bar(saved, errors, "Guardar claves") }}
+</form>

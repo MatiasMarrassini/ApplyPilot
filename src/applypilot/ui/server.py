@@ -1,29 +1,21 @@
 """FastAPI app for the local web UI.
 
 Only meant to be served on 127.0.0.1: it exposes personal data (resume,
-profile) and, later, API keys.
+profile) and API keys.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from applypilot import __version__
 from applypilot.config import ensure_dirs, load_env
 from applypilot.database import init_db
 from applypilot.ui import jobs
-
-UI_DIR = Path(__file__).parent
-templates = Jinja2Templates(directory=UI_DIR / "templates")
-templates.env.globals["version"] = __version__
-# Job URLs come from scraped sites: never render a non-http(s) link (e.g. javascript:).
-templates.env.filters["http_url"] = lambda u: u if u and u.lower().startswith(("http://", "https://")) else "#"
+from applypilot.ui.setup_routes import router as setup_router
+from applypilot.ui.templating import UI_DIR, templates
 
 ACTIONS = {
     "discard": jobs.discard,
@@ -42,6 +34,7 @@ def create_app() -> FastAPI:
     # Reject requests whose Host isn't local (DNS-rebinding protection).
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
     app.mount("/static", StaticFiles(directory=UI_DIR / "static"), name="static")
+    app.include_router(setup_router)
 
     @app.middleware("http")
     async def require_htmx_for_writes(request: Request, call_next):

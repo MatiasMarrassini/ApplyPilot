@@ -1,0 +1,30 @@
+{% macro input(name, label, value="", kind="text", required=false, hint="", placeholder="", error=none) %}
+<label>
+  {{ label }}{% if required %} <span class="req" aria-hidden="true">*</span>{% endif %}
+  {% if kind == "lines" %}
+  <textarea name="{{ name }}" rows="3" placeholder="{{ placeholder }}"
+            {% if error %}aria-invalid="true"{% endif %}>{{ value }}</textarea>
+  {% elif kind == "yesno" %}
+  <select name="{{ name }}">
+    <option value="" {% if not value %}selected{% endif %}>—</option>
+    <option value="Yes" {% if value == "Yes" %}selected{% endif %}>Sí</option>
+    <option value="No" {% if value == "No" %}selected{% endif %}>No</option>
+  </select>
+  {% else %}
+  <input type="{{ 'text' if kind == 'number' else kind }}" name="{{ name }}" value="{{ value }}"
+         placeholder="{{ placeholder }}" {% if kind == "number" %}inputmode="numeric"{% endif %}
+         {% if kind == "password" %}autocomplete="new-password"{% endif %}
+         {% if error %}aria-invalid="true"{% endif %}>
+  {% endif %}
+  {% if error %}<small class="field-error">{{ error }}</small>
+  {% elif hint %}<small>{{ hint }}</small>{% endif %}
+</label>
+{% endmacro %}
+
+{% macro save_bar(saved, errors, label="Guardar") %}
+<div class="save-bar">
+  <button type="submit">{{ label }}</button>
+  {% if saved %}<span class="saved" role="status">✓ Guardado</span>{% endif %}
+  {% if errors %}<span class="field-error" role="alert">Revisá los campos marcados.</span>{% endif %}
+</div>
+{% endmacro %}

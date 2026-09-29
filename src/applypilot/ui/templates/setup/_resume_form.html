@@ -1,0 +1,24 @@
+<div id="resume-forms">
+  {% if saved %}<article class="notice notice-ok" role="status">✓ {{ saved }}</article>{% endif %}
+
+  <form hx-post="/setup/resume/upload" hx-target="#resume-forms" hx-swap="outerHTML"
+        hx-encoding="multipart/form-data" class="upload-row">
+    <label>
+      Cargar desde archivo (.txt o .pdf)
+      <input type="file" name="file" accept=".txt,.pdf" required {% if errors.file %}aria-invalid="true"{% endif %}>
+      {% if errors.file %}<small class="field-error">{{ errors.file }}</small>
+      {% elif has_pdf %}<small>Ya tenés un CV en PDF guardado.</small>{% endif %}
+    </label>
+    <button type="submit" class="secondary">Subir</button>
+  </form>
+
+  <form hx-post="/setup/resume" hx-target="#resume-forms" hx-swap="outerHTML">
+    <label>
+      CV en texto
+      <textarea name="resume" rows="24" class="resume-text" placeholder="Pegá acá el texto de tu CV…"
+                {% if errors.resume %}aria-invalid="true"{% endif %}>{{ resume }}</textarea>
+      {% if errors.resume %}<small class="field-error">{{ errors.resume }}</small>{% endif %}
+    </label>
+    <div class="save-bar"><button type="submit">Guardar CV</button></div>
+  </form>
+</div>

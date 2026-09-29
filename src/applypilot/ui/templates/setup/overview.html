@@ -1,0 +1,43 @@
+{% extends "setup/layout.html" %}
+{% block setup_content %}
+<div class="steps">
+  {% for title, href, done, desc in steps %}
+  <a class="step {{ 'done' if done else 'todo' }}" href="{{ href }}">
+    <span class="step-mark" aria-hidden="true">{{ "✓" if done else loop.index }}</span>
+    <span>
+      <strong>{{ title }}</strong>
+      <small>{{ desc }}</small>
+      <small class="step-state">{{ "Configurado" if done else "Pendiente" }}</small>
+    </span>
+  </a>
+  {% endfor %}
+</div>
+
+<article>
+  <header>
+    <strong>Nivel actual: {{ tier }} de 3 — {{ tier_label }}</strong>
+    <p class="muted"><small>
+      {% if tier == 1 %}Podés buscar ofertas. Con una clave de IA se habilita puntuar y personalizar CVs.
+      {% elif tier == 2 %}Podés buscar, puntuar y personalizar. El auto-apply necesita Claude Code y Chrome.
+      {% else %}Todo habilitado, incluido el auto-apply.{% endif %}
+    </small></p>
+  </header>
+  <div class="table-wrap">
+    <table class="checks">
+      <tbody>
+        {% for c in checks %}
+        <tr>
+          <td><span class="check check-{{ c.status }}">{{ {"ok": "OK", "warn": "Atención", "missing": "Falta", "optional": "Opcional"}[c.status] }}</span></td>
+          <td><strong>{{ c.name }}</strong></td>
+          <td class="muted"><small>
+            {% if c.status != "ok" and c.name in check_links %}<a href="{{ check_links[c.name] }}">Configurar →</a>
+            {% else %}{{ c.note }}{% endif %}
+          </small></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <footer class="muted"><small>Tus archivos están en <code>{{ app_dir }}</code></small></footer>
+</article>
+{% endblock %}

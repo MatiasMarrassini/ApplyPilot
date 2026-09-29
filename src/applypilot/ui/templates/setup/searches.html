@@ -1,0 +1,8 @@
+{% extends "setup/layout.html" %}
+{% block setup_content %}
+{% if not exists %}
+<article class="notice">Todavía no configuraste tus búsquedas, así que el pipeline usaría el ejemplo que trae ApplyPilot
+  (puestos de software en San Francisco). Completá esto antes de buscar.</article>
+{% endif %}
+{% include "setup/_searches_form.html" %}
+{% endblock %}

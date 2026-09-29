@@ -57,3 +57,57 @@ button.small { padding: 0.2rem 0.6rem; font-size: 0.8rem; margin: 0 0 0 0.25rem;
 .notice-error { border-left: 4px solid var(--ap-low); }
 pre.doc { white-space: pre-wrap; word-wrap: break-word; padding: 1rem; font-size: 0.85rem; max-height: 60vh; overflow-y: auto; }
 details { margin-bottom: 1rem; }
+
+/* --- Setup --- */
+.subnav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--pico-muted-border-color); }
+.subnav a { padding-block: 0.5rem; text-decoration: none; color: var(--pico-muted-color); border-bottom: 2px solid transparent; }
+.subnav a[aria-current="page"] { color: var(--pico-primary); border-bottom-color: var(--pico-primary); font-weight: 600; }
+
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.step { display: flex; gap: 0.75rem; padding: 1rem; border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); text-decoration: none; color: inherit; }
+.step:hover { border-color: var(--pico-primary); }
+.step small { display: block; color: var(--pico-muted-color); }
+.step .step-state { margin-top: 0.4rem; font-weight: 600; }
+.step.done .step-state { color: var(--ap-high); }
+.step.todo .step-state { color: var(--ap-mid); }
+.step-mark { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 1.8rem; height: 1.8rem; border-radius: 999px; font-weight: 700; border: 2px solid var(--ap-mid); color: var(--ap-mid); }
+.step.done .step-mark { background: var(--ap-high); border-color: var(--ap-high); color: #fff; }
+
+.check { display: inline-block; min-width: 5.5rem; text-align: center; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.8rem; border: 1px solid currentColor; }
+.check-ok { color: var(--ap-high); }
+.check-warn { color: var(--ap-mid); }
+.check-missing { color: var(--ap-low); }
+.check-optional { color: var(--ap-none); }
+table.checks td { vertical-align: middle; }
+
+.setup-form fieldset { margin-bottom: 2rem; }
+.grid-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1rem; }
+.grid-fields.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-fields .span-all { grid-column: 1 / -1; }
+@media (max-width: 768px) { .grid-fields, .grid-fields.three { grid-template-columns: 1fr; } }
+.req { color: var(--ap-low); }
+.field-error { color: var(--ap-low) !important; }
+.skill-row, .loc-row { display: grid; grid-template-columns: 1fr 3fr; gap: 0.5rem; }
+.loc-row { grid-template-columns: 1fr auto; align-items: baseline; }
+label.inline { display: inline-flex; align-items: center; gap: 0.4rem; margin-right: 1.25rem; }
+.boards, .providers { margin-bottom: 1rem; }
+.clear-secret { margin-top: -0.5rem; margin-bottom: 1rem; font-size: 0.85rem; color: var(--pico-muted-color); }
+
+.save-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 1rem; padding-block: 0.75rem;
+  background: var(--pico-background-color); border-top: 1px solid var(--pico-muted-border-color); }
+.save-bar button { width: auto; margin: 0; }
+.saved { color: var(--ap-high); font-weight: 600; }
+
+.notice { border-left: 4px solid var(--pico-primary); }
+.notice-ok { border-left-color: var(--ap-high); }
+.notice-warn { border-left-color: var(--ap-mid); padding-block: 0.5rem; }
+.upload-row { display: flex; gap: 1rem; align-items: end; flex-wrap: wrap; }
+.upload-row label { flex: 1; min-width: 14rem; }
+.upload-row button { width: auto; }
+.resume-text { font-family: var(--pico-font-family-monospace); font-size: 0.85rem; }
+
+/* Show only the selected provider's fields (no JS needed) */
+#keys-form .provider-fields { display: none; }
+#keys-form:has(input[name=provider][value=gemini]:checked) [data-provider=gemini],
+#keys-form:has(input[name=provider][value=openai]:checked) [data-provider=openai],
+#keys-form:has(input[name=provider][value=local]:checked) [data-provider=local] { display: block; }
