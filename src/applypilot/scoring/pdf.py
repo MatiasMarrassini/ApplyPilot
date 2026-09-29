@@ -7,7 +7,6 @@ and exports to PDF using headless Chromium via Playwright.
 import logging
 from pathlib import Path
 
-from applypilot.config import TAILORED_DIR
 
 log = logging.getLogger(__name__)
 
@@ -391,10 +390,10 @@ def convert_to_pdf(
 
 
 def batch_convert(limit: int = 50) -> int:
-    """Convert .txt files in TAILORED_DIR that don't have corresponding PDFs.
+    """Convert tailored resumes and cover letters that don't have a PDF yet.
 
-    Scans for .txt files (excluding _JOB.txt and _REPORT.json), checks if a
-    .pdf with the same stem already exists, and converts any that are missing.
+    Paths come from the database, so this covers both the per-application
+    folders and files written by older versions to the flat directories.
 
     Args:
         limit: Maximum number of files to convert.
@@ -402,26 +401,22 @@ def batch_convert(limit: int = 50) -> int:
     Returns:
         Number of PDFs generated.
     """
-    if not TAILORED_DIR.exists():
-        log.warning("Tailored directory does not exist: %s", TAILORED_DIR)
-        return 0
+    from applypilot.database import get_connection
 
-    txt_files = sorted(TAILORED_DIR.glob("*.txt"))
-    # Exclude _JOB.txt and _CL.txt files from resume conversion
-    # (they get their own conversion calls)
-    candidates = [
-        f for f in txt_files
-        if not f.name.endswith("_JOB.txt")
-    ]
+    rows = get_connection().execute(
+        "SELECT tailored_resume_path, cover_letter_path FROM jobs "
+        "WHERE tailored_resume_path IS NOT NULL OR cover_letter_path IS NOT NULL"
+    ).fetchall()
 
-    # Filter to those without a corresponding PDF
     to_convert: list[Path] = []
-    for f in candidates:
-        pdf_path = f.with_suffix(".pdf")
-        if not pdf_path.exists():
-            to_convert.append(f)
-        if len(to_convert) >= limit:
-            break
+    for row in rows:
+        for value in row:
+            if not value:
+                continue
+            txt = Path(value)
+            if txt.suffix == ".txt" and txt.exists() and not txt.with_suffix(".pdf").exists():
+                to_convert.append(txt)
+    to_convert = to_convert[:limit]
 
     if not to_convert:
         log.info("All text files already have PDFs.")
@@ -434,7 +429,7 @@ def batch_convert(limit: int = 50) -> int:
             convert_to_pdf(f)
             converted += 1
         except Exception as e:
-            log.error("Failed to convert %s: %s", f.name, e)
+            log.error("Failed to convert %s: %s", f, e)
 
-    log.info("Done: %d/%d PDFs generated in %s", converted, len(to_convert), TAILORED_DIR)
+    log.info("Done: %d/%d PDFs generated", converted, len(to_convert))
     return converted

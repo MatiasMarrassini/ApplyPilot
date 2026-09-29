@@ -87,8 +87,16 @@ def create_app() -> FastAPI:
         job = _get_or_404(job_id)
         return templates.TemplateResponse(
             request, "jobs/detail.html",
-            {"job": job, "docs": jobs.job_documents(job), "nav": "jobs"},
+            {"job": job, "docs": jobs.job_documents(job), "folder": jobs.documents_folder(job), "nav": "jobs"},
         )
+
+    @app.post("/jobs/{job_id}/open-folder", response_class=HTMLResponse)
+    def open_folder(job_id: int):
+        folder = jobs.documents_folder(_get_or_404(job_id))
+        if not folder:
+            return HTMLResponse('<small class="field-error">Todavía no hay documentos para esta oferta.</small>')
+        jobs.open_in_file_manager(folder)
+        return HTMLResponse('<small class="muted">Carpeta abierta.</small>')
 
     @app.post("/jobs/{job_id}/{action}", response_class=HTMLResponse)
     def job_action(request: Request, job_id: int, action: str, ctx: str = Form("row")):

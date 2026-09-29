@@ -43,6 +43,13 @@
 {% endif %}
 
 <section>
+  {% if folder %}
+  <div class="folder-bar">
+    <button class="secondary outline small" hx-post="/jobs/{{ job.id }}/open-folder" hx-target="#folder-status">Abrir carpeta</button>
+    <small class="muted"><code>{{ folder }}</code></small>
+    <span id="folder-status"></span>
+  </div>
+  {% endif %}
   <details {% if docs.cv.text %}open{% endif %}>
     <summary><strong>CV personalizado</strong>
       {% if not docs.cv.text %}<small class="muted"> — todavía no generado</small>{% endif %}</summary>

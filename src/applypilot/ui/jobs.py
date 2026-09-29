@@ -139,6 +139,30 @@ def job_documents(job: dict) -> dict:
     return docs
 
 
+def documents_folder(job: dict) -> Path | None:
+    """Folder holding this job's CV/letter, if they've been generated."""
+    for column in ("tailored_resume_path", "cover_letter_path"):
+        if job.get(column):
+            folder = Path(job[column]).parent
+            if folder.is_dir():
+                return folder
+    return None
+
+
+def open_in_file_manager(folder: Path) -> None:
+    """Open a folder in Explorer/Finder. The server runs on the user's machine."""
+    import os
+    import subprocess
+    import sys
+
+    if sys.platform == "win32":
+        os.startfile(folder)  # local UI; the path comes from our own DB
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", str(folder)])
+    else:
+        subprocess.Popen(["xdg-open", str(folder)])
+
+
 def document_pdf_path(job: dict, kind: str) -> Path | None:
     column = {"cv": "tailored_resume_path", "cover": "cover_letter_path"}.get(kind)
     path = job.get(column) if column else None

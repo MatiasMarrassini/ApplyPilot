@@ -119,6 +119,9 @@ Job search queries, target titles, locations, boards. Run multiple searches with
 ### `.env`
 API keys and runtime config: `GEMINI_API_KEY`, `LLM_MODEL`, `CAPSOLVER_API_KEY` (optional).
 
+### `applications/`
+One folder per job with everything generated for it: `resume.txt`/`.pdf`, `cover_letter.txt`/`.pdf`, a copy of the posting (`job.txt`) and the tailoring report. Folder names include a short hash of the job URL, so postings with the same title never overwrite each other.
+
 ### Package configs (shipped with ApplyPilot)
 - `config/employers.yaml` - Workday employer registry (48 preconfigured)
 - `config/sites.yaml` - Direct career sites (30+), blocked sites, base URLs, manual ATS domains
