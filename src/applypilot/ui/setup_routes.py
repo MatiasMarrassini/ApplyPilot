@@ -98,7 +98,9 @@ def _resume_ctx(**extra) -> dict:
         "resume": settings.load_resume(),
         "has_pdf": config.RESUME_PDF_PATH.exists(),
         "errors": {},
-        "saved": "",
+        "upload_msg": "",
+        "text_msg": "",
+        "oob": False,
         **extra,
     }
 
@@ -116,14 +118,19 @@ async def resume_save(request: Request):
         ctx = _resume_ctx(resume=text, errors={"resume": "El CV no puede quedar vacío"})
     else:
         settings.save_resume(text)
-        ctx = _resume_ctx(saved="CV guardado.")
-    return _form_or_page(request, "setup/_resume_form.html", "setup/resume.html", "resume", **ctx)
+        ctx = _resume_ctx(text_msg="CV guardado")
+    return _form_or_page(request, "setup/_resume_text.html", "setup/resume.html", "resume", **ctx)
 
 
 @router.post("/resume/upload", response_class=HTMLResponse)
 async def resume_upload(request: Request, file: UploadFile):
+    """Re-renders only the upload form, so unsaved text in the textarea survives.
+
+    A .txt upload replaces the text on purpose; that box is swapped out-of-band.
+    """
     data = await file.read(MAX_UPLOAD_BYTES + 1)
     name = (file.filename or "").lower()
+    replace_text = False
     if len(data) > MAX_UPLOAD_BYTES:
         ctx = _resume_ctx(errors={"file": "El archivo supera 5 MB"})
     elif name.endswith(".txt"):
@@ -132,16 +139,21 @@ async def resume_upload(request: Request, file: UploadFile):
         except UnicodeDecodeError:
             text = data.decode("latin-1")
         settings.save_resume(text)
-        ctx = _resume_ctx(saved=f"Se cargó el texto de {file.filename}.")
+        replace_text = True
+        ctx = _resume_ctx(upload_msg=f"Se cargó y guardó el texto de {file.filename}.", oob=True)
     elif name.endswith(".pdf"):
         settings.save_resume_pdf(data)
-        ctx = _resume_ctx(saved=(
+        ctx = _resume_ctx(upload_msg=(
             f"Se guardó {file.filename} como tu CV en PDF. La IA trabaja con texto: "
-            "copiá el contenido del PDF y pegalo en el cuadro de abajo."
+            "si todavía no lo hiciste, copiá el contenido del PDF, pegalo abajo y guardalo."
         ))
     else:
         ctx = _resume_ctx(errors={"file": "Subí un archivo .txt o .pdf"})
-    return _form_or_page(request, "setup/_resume_form.html", "setup/resume.html", "resume", **ctx)
+
+    upload = templates.get_template("setup/_resume_upload.html").render(ctx)
+    if replace_text:
+        upload += templates.get_template("setup/_resume_text.html").render(ctx)
+    return HTMLResponse(upload)
 
 
 # --- Searches --------------------------------------------------------------

@@ -10,7 +10,8 @@
       {% set hint = f.hint %}
       {% if f.kind == "password" and has_password %}{% set hint = "Ya hay una guardada; dejalo vacío para mantenerla. " ~ f.hint %}{% endif %}
       <div class="{{ 'span-all' if f.kind in ('lines', 'password') }}">
-        {{ input(name, f.label, values.get(name, ""), f.kind, f.required, hint, f.placeholder, errors.get(name)) }}
+        {{ input(name, f.label, values.get(name, ""), f.kind, f.required, hint, f.placeholder, errors.get(name),
+                 f.options, values.get(name ~ ".other", "")) }}
       </div>
       {% endfor %}
     </div>
@@ -21,10 +22,10 @@
     <legend><strong>Habilidades</strong></legend>
     <p class="muted"><small>Separadas por comas. La IA solo va a mencionar habilidades de esta lista en tus CVs.
       Dejá la categoría vacía para borrarla; usá la última fila para agregar una nueva.</small></p>
-    {% for cat, vals in skills %}
+    {% for cat, vals, example in skills %}
     <div class="skill-row">
       <input type="text" name="skills.cat.{{ loop.index0 }}" value="{{ cat }}" placeholder="Nueva categoría" aria-label="Categoría">
-      <input type="text" name="skills.vals.{{ loop.index0 }}" value="{{ vals }}" placeholder="Python, SQL, …" aria-label="Habilidades">
+      <input type="text" name="skills.vals.{{ loop.index0 }}" value="{{ vals }}" placeholder="{{ example }}" aria-label="Habilidades">
     </div>
     {% endfor %}
   </fieldset>

@@ -20,14 +20,21 @@ from applypilot import config
 # ---------------------------------------------------------------------------
 
 
+EEO_DEFAULT = "Decline to self-identify"
+OTHER = "__other__"
+
+
 @dataclass
 class Field:
     key: str
     label: str
-    kind: str = "text"  # text | email | url | password | yesno | lines | number
+    kind: str = "text"  # text | email | url | password | yesno | lines | number | choice
     required: bool = False
     hint: str = ""
     placeholder: str = ""
+    # kind="choice": (stored value, label). Stored values use the standard
+    # wording of US application forms so the auto-apply agent can match them.
+    options: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -90,15 +97,51 @@ PROFILE_SECTIONS: list[Section] = [
     ]),
     Section("eeo_voluntary", "Datos demográficos voluntarios (EEO)",
             "Preguntas opcionales de formularios en EE.UU. Podés dejar las respuestas por defecto.", [
-        Field("gender", "Género"),
-        Field("race_ethnicity", "Etnia"),
-        Field("veteran_status", "Condición de veterano"),
-        Field("disability_status", "Discapacidad"),
+        Field("gender", "Género", "choice", options=[
+            ("Male", "Masculino"),
+            ("Female", "Femenino"),
+            ("Non-binary", "No binario"),
+            (EEO_DEFAULT, "Prefiero no responder"),
+        ]),
+        Field("race_ethnicity", "Etnia", "choice", options=[
+            ("Hispanic or Latino", "Hispano / Latino"),
+            ("White", "Blanco"),
+            ("Black or African American", "Negro / Afroamericano"),
+            ("Asian", "Asiático"),
+            ("American Indian or Alaska Native", "Indígena americano / Nativo de Alaska"),
+            ("Native Hawaiian or Other Pacific Islander", "Nativo de Hawái / Islas del Pacífico"),
+            ("Two or More Races", "Dos o más"),
+            (EEO_DEFAULT, "Prefiero no responder"),
+        ]),
+        Field("veteran_status", "¿Sos veterano/a de las fuerzas armadas de EE.UU.?", "choice", options=[
+            ("I am not a protected veteran", "No"),
+            ("I identify as one or more of the classifications of protected veteran", "Sí"),
+            (EEO_DEFAULT, "Prefiero no responder"),
+        ]),
+        Field("disability_status", "¿Tenés alguna discapacidad?", "choice", options=[
+            ("No, I do not have a disability", "No"),
+            ("Yes, I have a disability (or previously had a disability)", "Sí"),
+            (EEO_DEFAULT, "Prefiero no responder"),
+        ]),
     ]),
 ]
 
-EEO_DEFAULT = "Decline to self-identify"
 DEFAULT_SKILL_CATEGORIES = ["languages", "frameworks", "devops", "databases", "tools"]
+SKILL_EXAMPLES = {
+    "languages": "Python, JavaScript, SQL",
+    "programming_languages": "Python, JavaScript, SQL",
+    "frameworks": "Django, React, FastAPI",
+    "devops": "Docker, AWS, CI/CD",
+    "databases": "PostgreSQL, MongoDB, Redis",
+    "tools": "Git, Jira, Linux",
+}
+# Short answers people type by hand, mapped to the standard option.
+_CHOICE_ALIASES = {
+    "veteran_status": {"no": 0, "yes": 1, "si": 1, "sí": 1},
+    "disability_status": {"no": 0, "yes": 1, "si": 1, "sí": 1},
+    "gender": {"m": 0, "masculino": 0, "hombre": 0, "f": 1, "femenino": 1, "mujer": 1},
+    "race_ethnicity": {"latino": 0, "latina": 0, "hispanic": 0, "hispano": 0},
+}
 
 
 def load_profile() -> dict:
@@ -126,18 +169,34 @@ def profile_form_values(profile: dict) -> dict[str, str]:
                 v = _yes_no(v)
             elif f.kind == "password":
                 v = ""  # never echo secrets back to the browser
+            elif f.kind == "choice":
+                v = normalize_choice(f, v) or (EEO_DEFAULT if section.key == "eeo_voluntary" else "")
             elif section.key == "eeo_voluntary" and not v:
                 v = EEO_DEFAULT
             values[f"{section.key}.{f.key}"] = "" if v is None else str(v)
     return values
 
 
-def skill_rows(profile: dict) -> list[tuple[str, str]]:
+def normalize_choice(f: Field, value) -> str:
+    """Map a stored answer onto one of the field's option values when it matches one."""
+    if not value:
+        return ""
+    text = str(value).strip()
+    for opt, _ in f.options:
+        if opt.lower() == text.lower():
+            return opt
+    alias = _CHOICE_ALIASES.get(f.key, {}).get(text.lower())
+    return f.options[alias][0] if alias is not None else text
+
+
+def skill_rows(profile: dict) -> list[tuple[str, str, str]]:
+    """(category, comma-separated skills, example placeholder) rows for the form."""
     boundary = profile.get("skills_boundary") or {}
     rows = [(k, ", ".join(v) if isinstance(v, list) else str(v)) for k, v in boundary.items()]
     if not rows:
         rows = [(c, "") for c in DEFAULT_SKILL_CATEGORIES]
-    return rows + [("", "")]  # one blank row to add a category
+    rows.append(("", ""))  # one blank row to add a category
+    return [(cat, vals, "Ej.: " + SKILL_EXAMPLES.get(cat, "habilidades separadas por comas")) for cat, vals in rows]
 
 
 def _split_lines(text: str) -> list[str]:
@@ -171,6 +230,12 @@ def save_profile(form: dict[str, str]) -> tuple[dict, dict[str, str]]:
                     data.setdefault(f.key, "")  # empty input keeps the saved password
             elif f.kind == "lines":
                 data[f.key] = _split_lines(raw)
+            elif f.kind == "choice":
+                if raw == OTHER:
+                    raw = (form.get(f"{name}.other") or "").strip()
+                    if not raw:
+                        errors[name] = "Escribí tu respuesta"
+                data[f.key] = raw
             else:
                 data[f.key] = raw
         profile[section.key] = data

@@ -1,0 +1,14 @@
+<form id="resume-upload" hx-post="/setup/resume/upload" hx-target="this" hx-swap="outerHTML"
+      hx-encoding="multipart/form-data" class="upload-block">
+  {% if upload_msg %}<article class="notice notice-ok" role="status">✓ {{ upload_msg }}</article>{% endif %}
+  <div class="upload-row">
+    <label>
+      Cargar desde archivo (.txt o .pdf)
+      <input type="file" name="file" accept=".txt,.pdf" required {% if errors.file %}aria-invalid="true"{% endif %}>
+      {% if errors.file %}<small class="field-error">{{ errors.file }}</small>
+      {% elif has_pdf %}<small>Ya tenés un CV en PDF guardado. Un .txt reemplaza el texto de abajo; un .pdf no lo toca.</small>
+      {% else %}<small>Un .txt reemplaza el texto de abajo; un .pdf no lo toca.</small>{% endif %}
+    </label>
+    <button type="submit" class="secondary">Subir</button>
+  </div>
+</form>

@@ -139,3 +139,9 @@ body:has(#run-panel[data-running]) .run-buttons button { pointer-events: none; o
 .run-error { color: var(--ap-low); }
 .run-cancelled { color: var(--ap-mid); }
 pre.log { max-height: 55vh; overflow: auto; font-size: 0.78rem; line-height: 1.45; padding: 0.75rem 1rem; margin: 0; white-space: pre-wrap; word-break: break-word; }
+
+/* "Other" free-text input only when "Otro" is selected */
+.choice { display: block; }
+.choice .other-input { display: none; }
+.choice:has(option[value="__other__"]:checked) .other-input { display: block; }
+.upload-block { margin-bottom: 1.5rem; }

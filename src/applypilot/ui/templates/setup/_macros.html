@@ -1,9 +1,22 @@
-{% macro input(name, label, value="", kind="text", required=false, hint="", placeholder="", error=none) %}
+{% macro input(name, label, value="", kind="text", required=false, hint="", placeholder="", error=none, options=[], other="") %}
 <label>
   {{ label }}{% if required %} <span class="req" aria-hidden="true">*</span>{% endif %}
   {% if kind == "lines" %}
   <textarea name="{{ name }}" rows="3" placeholder="{{ placeholder }}"
             {% if error %}aria-invalid="true"{% endif %}>{{ value }}</textarea>
+  {% elif kind == "choice" %}
+  {% set known = options | map(attribute=0) | list %}
+  {% set is_other = value and value not in known %}
+  <span class="choice">
+    <select name="{{ name }}" {% if error %}aria-invalid="true"{% endif %}>
+      {% for opt, opt_label in options %}
+      <option value="{{ opt }}" {% if value == opt %}selected{% endif %}>{{ opt_label }}</option>
+      {% endfor %}
+      <option value="__other__" {% if is_other %}selected{% endif %}>Otro (escribir)</option>
+    </select>
+    <input type="text" class="other-input" name="{{ name }}.other" aria-label="{{ label }}: otro"
+           value="{{ other or (value if is_other and value != '__other__' else '') }}" placeholder="Escribí tu respuesta">
+  </span>
   {% elif kind == "yesno" %}
   <select name="{{ name }}">
     <option value="" {% if not value %}selected{% endif %}>—</option>

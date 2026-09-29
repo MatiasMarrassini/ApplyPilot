@@ -120,3 +120,39 @@ def test_keys_mask_keep_and_switch_provider(client):
 
     r = client.post("/setup/keys", data={"provider": "local", "LLM_URL": "localhost"}, headers=HX)
     assert "Ingresá la URL" in r.text
+
+
+def test_pdf_upload_leaves_unsaved_text_alone(client):
+    r = client.post("/setup/resume/upload", files={"file": ("cv.pdf", b"%PDF-1.4")}, headers=HX)
+    assert config.RESUME_PDF_PATH.read_bytes() == b"%PDF-1.4"
+    assert 'id="resume-upload"' in r.text
+    assert "<textarea" not in r.text  # the text box isn't re-rendered, so typed text survives
+
+    r = client.post("/setup/resume/upload", files={"file": ("cv.txt", b"From file")}, headers=HX)
+    assert 'hx-swap-oob="true"' in r.text and "From file" in r.text
+
+
+def test_eeo_choices_normalize_and_accept_other(client):
+    config.PROFILE_PATH.write_text(json.dumps({"eeo_voluntary": {
+        "gender": "male", "race_ethnicity": "Latino", "veteran_status": "No", "disability_status": "Martian",
+    }}), encoding="utf-8")
+    page = client.get("/setup/profile").text
+    assert '<option value="Male" selected>' in page
+    assert '<option value="Hispanic or Latino" selected>' in page
+    assert '<option value="I am not a protected veteran" selected>' in page
+    assert 'value="Martian"' in page  # unknown answer shown as "Otro"
+
+    form = {**PROFILE_FORM, "eeo_voluntary.gender": "__other__", "eeo_voluntary.gender.other": "Agender",
+            "eeo_voluntary.disability_status": "No, I do not have a disability"}
+    client.post("/setup/profile", data=form, headers=HX)
+    eeo = json.loads(config.PROFILE_PATH.read_text(encoding="utf-8"))["eeo_voluntary"]
+    assert eeo["gender"] == "Agender"
+    assert eeo["disability_status"] == "No, I do not have a disability"
+
+    r = client.post("/setup/profile", data={**form, "eeo_voluntary.gender.other": ""}, headers=HX)
+    assert "Escribí tu respuesta" in r.text
+
+
+def test_skill_placeholders_differ_by_category(client):
+    page = client.get("/setup/profile").text
+    assert "Ej.: Docker, AWS, CI/CD" in page and "Ej.: PostgreSQL, MongoDB, Redis" in page

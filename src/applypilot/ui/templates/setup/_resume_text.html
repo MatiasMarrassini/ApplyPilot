@@ -1,0 +1,12 @@
+<form id="resume-text" hx-post="/setup/resume" hx-target="this" hx-swap="outerHTML"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <label>
+    CV en texto
+    <textarea name="resume" rows="24" class="resume-text" placeholder="Pegá acá el texto de tu CV…"
+              {% if errors.resume %}aria-invalid="true"{% endif %}>{{ resume }}</textarea>
+    {% if errors.resume %}<small class="field-error">{{ errors.resume }}</small>{% endif %}
+  </label>
+  <div class="save-bar">
+    <button type="submit">Guardar CV</button>
+    {% if text_msg %}<span class="saved" role="status">✓ {{ text_msg }}</span>{% endif %}
+  </div>
+</form>
