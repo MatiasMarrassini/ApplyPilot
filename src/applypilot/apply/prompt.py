@@ -100,7 +100,8 @@ def _build_location_check(profile: dict, search_config: dict) -> str:
     """
     personal = profile["personal"]
     location_cfg = search_config.get("location", {})
-    accept_patterns = location_cfg.get("accept_patterns", [])
+    # location_accept is the key discovery reads; accept_patterns is the older name.
+    accept_patterns = location_cfg.get("accept_patterns") or search_config.get("location_accept", [])
     primary_city = personal.get("city", location_cfg.get("primary", "your city"))
 
     # Build the list of acceptable cities for hybrid/onsite

@@ -343,7 +343,7 @@ def ui(
     except ImportError:
         console.print(
             "[red]The web UI needs extra dependencies.[/red]\n"
-            'Install them with: [bold]pip install "applypilot[ui]"[/bold]'
+            'From the repository folder, run: [bold]pip install -e ".\\[ui]"[/bold]'
         )
         raise typer.Exit(code=1)
 

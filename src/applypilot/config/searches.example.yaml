@@ -61,9 +61,10 @@ locations:
   - location: "Remote"
     remote: true
 
-# Location filtering -- accept/reject patterns for job location text
-location:
-  accept_patterns:
+# Location filtering for non-remote jobs (remote jobs are always kept).
+# A non-remote job is kept only if its location contains one of these;
+# with an empty list, every onsite/hybrid job is dropped.
+location_accept:
     - "San Francisco"
     - "Bay Area"
     - "SF"
@@ -74,7 +75,9 @@ location:
     - "United States"
     - "US"
     - "USA"
-  reject_patterns:
+
+# Checked before location_accept: matching non-remote jobs are dropped.
+location_reject_non_remote:
     - "New York only"
     - "Seattle only"
     - "onsite only"
@@ -82,11 +85,9 @@ location:
     - "India"
     - "Philippines"
 
-# Country for Indeed/LinkedIn/Google Jobs searches
-country: "USA"
-
-# JobSpy source boards (all available options shown)
-boards:
+# JobSpy source boards (all available options shown).
+# zip_recruiter only covers the US and Canada.
+sites:
   - indeed
   - linkedin
   - glassdoor
@@ -97,6 +98,7 @@ boards:
 defaults:
   results_per_site: 100  # Max results per board per query
   hours_old: 72          # Only jobs posted within this many hours
+  country_indeed: "usa"  # Country for Indeed/Google Jobs (e.g. "argentina", "canada")
 
 # Negative keywords -- skip jobs with these in the title (case-insensitive)
 exclude_titles:
