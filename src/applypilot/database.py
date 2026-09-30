@@ -150,12 +150,13 @@ def _reset_failed_scores(conn: sqlite3.Connection) -> None:
     Older versions stored failed scoring calls as fit_score=0, which marked
     them as scored forever. Clearing them lets the next run retry.
     """
-    cur = conn.execute(
+    conn.execute(
         "UPDATE jobs SET fit_score = NULL, score_reasoning = NULL, scored_at = NULL "
         "WHERE fit_score = 0 AND score_reasoning LIKE '%LLM error:%'"
     )
-    if cur.rowcount:
-        conn.commit()
+    # Always commit: the UPDATE opens a write transaction even when it matches
+    # no rows, and leaving it open locks the database for every other process.
+    conn.commit()
 
 
 # Complete column registry: column_name -> SQL type with optional default.

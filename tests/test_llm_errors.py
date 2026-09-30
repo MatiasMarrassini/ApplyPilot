@@ -77,3 +77,21 @@ def test_init_db_clears_fake_zero_scores(jobs_db):
     init_db()
     rows = dict(get_connection().execute("SELECT url, fit_score FROM jobs WHERE url IN ('https://x/0', 'https://x/1')"))
     assert rows == {"https://x/0": None, "https://x/1": 3}
+
+
+def test_init_db_leaves_no_open_write_transaction():
+    """A long-lived process (the web UI) calls init_db once; other processes must still write."""
+    import subprocess
+    import sys
+
+    conn = init_db()
+    assert not conn.in_transaction
+    code = (
+        "from applypilot.database import get_connection, init_db\n"
+        "init_db()\n"
+        "get_connection().execute('PRAGMA busy_timeout=1000')\n"
+        "c = get_connection(); c.execute(\"INSERT OR IGNORE INTO jobs (url) VALUES ('https://lock/1')\"); c.commit()\n"
+        "print('ok')\n"
+    )
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+    assert out.stdout.strip() == "ok", out.stderr
