@@ -362,7 +362,8 @@ def save_searches(form) -> tuple[dict, dict[str, str]]:
     # prompt reads location.accept_patterns. Keep both in sync.
     cfg["location_accept"] = accept
     cfg["location_reject_non_remote"] = _split_lines(form.get("reject") or "")
-    cfg.setdefault("location", {})
+    if not isinstance(cfg.get("location"), dict):
+        cfg["location"] = {}
     cfg["location"]["accept_patterns"] = accept
 
     defaults = dict(cfg.get("defaults") or {})

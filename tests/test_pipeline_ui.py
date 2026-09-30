@@ -81,3 +81,15 @@ def test_streaming_pending_counts_ignore_discarded_jobs():
     # Otherwise `applypilot run --stream` would loop forever on a job no stage will process.
     assert _count_pending("score") == 0
     assert _count_pending("enrich") == 0
+
+
+def test_run_env_picks_up_env_file_edits(monkeypatch):
+    from applypilot import config
+    from applypilot.ui.runner import _child_env
+
+    monkeypatch.setenv("LLM_MODEL", "old-model-loaded-at-startup")
+    config.ENV_PATH.write_text("LLM_MODEL=new-model\n", encoding="utf-8")
+    try:
+        assert _child_env()["LLM_MODEL"] == "new-model"
+    finally:
+        config.ENV_PATH.unlink()

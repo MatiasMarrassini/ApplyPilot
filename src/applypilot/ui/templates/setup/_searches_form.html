@@ -54,7 +54,10 @@
       {% endfor %}
     </div>
     {% if errors.sites %}<small class="field-error">{{ errors.sites }}</small>{% endif %}
-    <p class="muted"><small>Además de estos portales, ApplyPilot siempre revisa los portales Workday y los sitios de empleo directos que trae configurados.</small></p>
+    <p class="muted"><small>ZipRecruiter solo tiene ofertas de EE.UU. y Canadá: desde otros países responde con error 403.
+      Glassdoor a veces no reconoce ciudades fuera de EE.UU. (en el log aparece "location not parsed").</small></p>
+    <p class="muted"><small>Además de estos portales, ApplyPilot siempre revisa los portales Workday y los sitios de empleo directos que trae configurados
+      (en su mayoría empresas de EE.UU. y Canadá).</small></p>
     <div class="grid-fields three">
       <label>
         Resultados por portal

@@ -74,7 +74,7 @@ class Runner:
             stamp = time.strftime("%Y%m%d-%H%M%S")  # local time, for the file name
             run = Run(title=title, args=args, log_path=str(config.LOG_DIR / f"ui-run-{stamp}.log"))
 
-            env = os.environ.copy()
+            env = _child_env()
             env.update({
                 "PYTHONUNBUFFERED": "1",
                 "PYTHONIOENCODING": "utf-8",  # Rich prints characters cp1252 can't encode
@@ -119,6 +119,20 @@ class Runner:
                 return
             self.current.cancelled = True
             _kill_tree(self._proc.pid)
+
+
+def _child_env() -> dict[str, str]:
+    """Environment for a run: this process's env, refreshed from .env.
+
+    The server loaded .env once at startup; if it was edited since (by hand or
+    with `applypilot init`), the run must see the new key/model, not the old one.
+    """
+    from dotenv import dotenv_values
+
+    env = os.environ.copy()
+    if config.ENV_PATH.exists():
+        env.update({k: v for k, v in dotenv_values(config.ENV_PATH).items() if v})
+    return env
 
 
 def _kill_tree(pid: int) -> None:
