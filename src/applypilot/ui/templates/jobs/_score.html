@@ -1,3 +1,5 @@
-{% if job.fit_score is not none %}
-<span class="score score-{{ 'high' if job.fit_score >= 7 else ('mid' if job.fit_score >= 5 else 'low') }}">{{ job.fit_score }}</span>
-{% else %}<span class="score score-none" title="Sin puntuar">–</span>{% endif %}
+{% set s = job.fit_score %}
+<span class="score {{ s | band }} {{ score_size | default('') }}" aria-label="{{ ('Puntaje ' ~ s ~ ' de 10') if s is not none else 'Sin puntuar' }}">
+  <span class="score-n">{{ s if s is not none else "–" }}</span>
+  <span class="ticks" aria-hidden="true">{% for i in range(10) %}<i class="{{ 'on' if s and i < s }}"></i>{% endfor %}</span>
+</span>

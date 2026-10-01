@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Setup · ApplyPilot{% endblock %}
 {% block content %}
-<h2>Setup</h2>
-<nav class="subnav" aria-label="Secciones de setup">
+<div class="page-head"><div><h1>Setup</h1>
+<p class="sub">Tu perfil, tu CV, qué buscar y el modelo de IA. Todo queda guardado en tu computadora.</p></div></div>
+<nav class="segmented subnav" aria-label="Secciones de setup">
   {% for key, label, href in [
       ("overview", "Resumen", "/setup"),
       ("profile", "Perfil", "/setup/profile"),

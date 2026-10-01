@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Inicio · ApplyPilot{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ greeting }}</h1>
+    <p class="sub">
+      {% if stats.found == 0 %}Todavía no hay ofertas. Configurá tus búsquedas y lanzá la primera.
+      {% elif stats.good_pending %}{{ stats.good_pending }} oferta{{ "s" if stats.good_pending != 1 }} con buen puntaje {{ "esperan" if stats.good_pending != 1 else "espera" }} tu revisión.
+      {% else %}No hay ofertas con buen puntaje pendientes de revisión.{% endif %}
+    </p>
+  </div>
+  <form class="actions" hx-post="/pipeline/run" hx-swap="none"
+        hx-on::after-request="if (event.detail.successful) window.location = '/pipeline'">
+    <button class="secondary" name="preset" value="ai" {% if not sidebar_state().provider %}disabled title="Necesita una clave de IA"{% endif %}>Procesar con IA</button>
+    <button name="preset" value="find">{{ icon("play") }}Buscar ofertas nuevas</button>
+  </form>
+</div>
+
+{% set stages = [
+  (stats.found, "Encontradas", ("en " ~ stats.sources | join(", ")) if stats.sources else "Ninguna todavía", "/jobs?view=all"),
+  (stats.scored, "Puntuadas", ("Faltan " ~ stats.unscored) if stats.unscored else "Todas al día", "/jobs?view=all&sort=score"),
+  (stats.good, "Con " ~ min_score ~ " o más", "Tu umbral para CV y carta", "/jobs?view=all&score=high"),
+  (stats.tailored, "Con CV y carta", "Listas para enviar" if stats.tailored else "Falta procesar con IA", "/jobs?view=ready"),
+  (stats.applied, "Aplicadas", (stats.applied_week ~ " en los últimos 7 días") if stats.applied else "Ninguna todavía", "/jobs?view=applied"),
+] %}
+<div class="funnel" role="list" aria-label="Progreso de tus búsquedas">
+  {% for n, label, note, href in stages %}
+  <a class="stage-cell {{ 'is-empty' if not n }}" href="{{ href }}" role="listitem">
+    <div class="stage-n">{{ n }}</div>
+    <div class="stage-label">{{ label }}</div>
+    <div class="stage-note">{{ note }}</div>
+  </a>
+  {% endfor %}
+</div>
+<div class="funnel-foot">
+  {% if stats.discarded %}<a class="link" href="/jobs?view=discarded">{{ stats.discarded }} descartadas</a>{% endif %}
+  {% if stats.last_found %}<span>Última oferta encontrada {{ stats.last_found | clock }}</span>{% endif %}
+</div>
+
+<div class="section-head">
+  <h2>Para revisar</h2>
+  <a class="link" href="/jobs?view=pending&score=high">Ver todas las de {{ min_score }} o más</a>
+</div>
+{% if review %}
+{% set no_select = true %}
+<div class="list no-select">
+  {% for job in review %}{% include "jobs/_row.html" %}{% endfor %}
+</div>
+{% else %}
+<article class="empty"><h2>Nada para revisar</h2>
+  <p class="muted">Cuando haya ofertas puntuadas con {{ min_score }} o más, van a aparecer acá.</p></article>
+{% endif %}
+
+<div class="section-head"><h2>Última ejecución</h2></div>
+{% if last_run %}
+<div class="run-line">
+  <span class="dot {{ 'busy' if last_run.status == 'running' else 'warn' if last_run.status in ('error', 'cancelled') else '' }}"></span>
+  <p><strong>{{ last_run.title }}</strong>
+    {% if last_run.status == "running" %}está en curso.
+    {% elif last_run.status == "error" %}terminó con errores {{ last_run.when | clock }}.
+    {% elif last_run.status == "cancelled" %}se detuvo {{ last_run.when | clock }}.
+    {% else %}terminó {{ last_run.when | clock }}.{% endif %}</p>
+  <a class="btn btn-secondary small" role="button" href="/pipeline">Abrir Pipeline</a>
+</div>
+{% else %}
+<div class="run-line"><span class="dot idle"></span><p>Todavía no lanzaste ninguna ejecución desde la interfaz.</p>
+  <a class="btn btn-secondary small" role="button" href="/pipeline">Abrir Pipeline</a></div>
+{% endif %}
+{% endblock %}

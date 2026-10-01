@@ -1,34 +1,64 @@
+{% if undo and undo.count %}
+<article class="notice undo" role="status">
+  <p>{{ undo.count }} oferta{{ "s" if undo.count != 1 }} {{ undo.done }}{{ "s" if undo.count != 1 }}.</p>
+  {% if not undo.undone %}
+  <button class="secondary small" hx-post="/jobs/bulk" hx-target="#results" hx-include="#filters, #bulk-page"
+          hx-vals='{"action": "{{ undo.inverse }}", "ids_csv": "{{ undo.ids }}", "undo": "1"}'>Deshacer</button>
+  {% endif %}
+</article>
+{% elif undo %}
+<article class="notice undo" role="status"><p>No había ofertas para cambiar en la selección.</p></article>
+{% endif %}
+
 {% if jobs %}
-<p class="muted"><small>{{ total }} oferta{{ "s" if total != 1 }}{% if pages > 1 %} · página {{ page }} de {{ pages }}{% endif %}</small></p>
-<div class="table-wrap">
-  <table class="striped jobs">
-    <thead>
-      <tr><th>Puntaje</th><th>Puesto</th><th>Empresa</th><th>Ubicación</th><th>Estado</th><th></th></tr>
-    </thead>
-    <tbody>
-      {% for job in jobs %}{% include "jobs/_row.html" %}{% endfor %}
-    </tbody>
-  </table>
+<div class="list-meta">
+  <span>{{ total }} oferta{{ "s" if total != 1 }}{% if pages > 1 %}, página {{ page }} de {{ pages }}{% endif %}</span>
 </div>
+<div class="list" id="job-list">
+  <div class="row head">
+    <input type="checkbox" class="pick-page" aria-label="Seleccionar todas las de esta página">
+    <span>Puntaje</span><span>Puesto</span><span>Empresa</span><span>Encontrada</span><span>Estado</span><span></span>
+  </div>
+  {% for job in jobs %}{% include "jobs/_row.html" %}{% endfor %}
+</div>
+
 {% if pages > 1 %}
 <nav class="pager">
   {% if page > 1 %}
-  <button class="secondary outline" hx-get="/jobs?page={{ page - 1 }}" hx-include="#filters"
-          hx-target="#results" hx-push-url="true">← Anterior</button>
+  <button class="secondary small" hx-get="/jobs?page={{ page - 1 }}" hx-include="#filters" hx-target="#results" hx-push-url="true">Anterior</button>
   {% endif %}
   {% if page < pages %}
-  <button class="secondary outline" hx-get="/jobs?page={{ page + 1 }}" hx-include="#filters"
-          hx-target="#results" hx-push-url="true">Siguiente →</button>
+  <button class="secondary small" hx-get="/jobs?page={{ page + 1 }}" hx-include="#filters" hx-target="#results" hx-push-url="true">Siguiente</button>
   {% endif %}
 </nav>
 {% endif %}
+
+<input type="hidden" id="bulk-all" name="all" value="0">
+<input type="hidden" id="bulk-page" name="page" value="{{ page }}">
+<div class="bulk-bar" id="bulk-bar" data-total="{{ total }}" hidden>
+  <span class="bulk-count" id="bulk-count"></span>
+  {% if total > jobs | length %}
+  <button type="button" class="link-btn" id="bulk-select-all">Seleccionar las {{ total }} que coinciden</button>
+  {% endif %}
+  {% set inc = "#filters, #bulk-all, #bulk-page, #job-list .pick:checked" %}
+  {% if filters.view == "discarded" %}
+  <button class="secondary small" hx-post="/jobs/bulk" hx-target="#results" hx-include="{{ inc }}" hx-vals='{"action": "restore"}'>Restaurar</button>
+  {% elif filters.view == "applied" %}
+  <button class="secondary small" hx-post="/jobs/bulk" hx-target="#results" hx-include="{{ inc }}" hx-vals='{"action": "unapply"}'>Desmarcar aplicadas</button>
+  {% else %}
+  <button class="secondary small" hx-post="/jobs/bulk" hx-target="#results" hx-include="{{ inc }}" hx-vals='{"action": "applied"}'>Marcar como aplicadas</button>
+  <button class="small danger" hx-post="/jobs/bulk" hx-target="#results" hx-include="{{ inc }}" hx-vals='{"action": "discard"}'>Descartar</button>
+  {% endif %}
+  <button type="button" class="ghost small" id="bulk-clear">Cancelar</button>
+</div>
 {% else %}
 <article class="empty">
   {% if counts.all == 0 %}
-  <p><strong>Todavía no hay ofertas.</strong></p>
-  <p class="muted">Configurá tus búsquedas en <a href="/setup">Setup</a> y después lanzalas desde <a href="/pipeline">Pipeline</a>.</p>
+  <h2>Todavía no hay ofertas</h2>
+  <p class="muted">Configurá tus búsquedas en <a href="/setup/searches">Setup</a> y después lanzalas desde <a href="/pipeline">Pipeline</a>.</p>
   {% else %}
-  <p class="muted">Ninguna oferta coincide con estos filtros.</p>
+  <h2>Ninguna oferta coincide</h2>
+  <p class="muted">Probá con otro estado, puntaje o búsqueda.</p>
   {% endif %}
 </article>
 {% endif %}

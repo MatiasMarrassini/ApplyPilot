@@ -7,10 +7,11 @@ profile) and API keys.
 from __future__ import annotations
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from applypilot import config
 from applypilot.config import ensure_dirs, load_env
 from applypilot.database import init_db
 from applypilot.ui import jobs
@@ -46,9 +47,17 @@ def create_app() -> FastAPI:
             return HTMLResponse("Forbidden", status_code=403)
         return await call_next(request)
 
-    @app.get("/")
-    def index():
-        return RedirectResponse("/jobs")
+    @app.get("/", response_class=HTMLResponse)
+    def home(request: Request):
+        min_score = config.DEFAULTS["min_score"]
+        return templates.TemplateResponse(request, "home.html", {
+            "nav": "home",
+            "stats": jobs.home_stats(min_score),
+            "review": jobs.to_review(min_score),
+            "min_score": min_score,
+            "greeting": _greeting(),
+            "last_run": _last_run(),
+        })
 
     @app.get("/jobs", response_class=HTMLResponse)
     def jobs_page(
@@ -57,26 +66,37 @@ def create_app() -> FastAPI:
         q: str = "",
         site: str = "",
         min_score: str = "",
+        score: str = "",
         sort: str = "score",
         page: int = 1,
     ):
-        score = int(min_score) if min_score.isdigit() else None
-        items, total = jobs.list_jobs(view, q.strip(), site, score, sort, page)
-        ctx = {
-            "jobs": items,
-            "total": total,
-            "page": page,
-            "pages": max(1, -(-total // jobs.PAGE_SIZE)),
-            "filters": {"view": view, "q": q, "site": site, "min_score": min_score, "sort": sort},
-            "views": jobs.VIEWS,
-            "sorts": jobs.SORTS,
-            "counts": jobs.view_counts(),
-            "sites": jobs.list_sites(),
-            "nav": "jobs",
+        return _render_jobs(request, _filters(view, q, site, min_score, score, sort), page)
+
+    @app.post("/jobs/bulk", response_class=HTMLResponse)
+    async def jobs_bulk(request: Request):
+        form = await request.form()
+        action = form.get("action")
+        if action not in jobs.BULK:
+            raise HTTPException(400, "Acción inválida")
+        f = _filters(form.get("view") or "pending", form.get("q") or "", form.get("site") or "",
+                     form.get("min_score") or "", form.get("score") or "", form.get("sort") or "score")
+        if form.get("all") == "1":
+            ids = jobs.matching_ids(f["view"], f["q"], f["site"], f["min_score_int"], f["score"])
+        else:
+            raw = form.getlist("ids") + str(form.get("ids_csv") or "").split(",")  # ids_csv: from "Deshacer"
+            ids = [int(i) for i in raw if str(i).strip().isdigit()]
+        changed = jobs.bulk_update(action, ids)
+        page = int(form.get("page") or 1) if str(form.get("page") or "1").isdigit() else 1
+        undo = {
+            "count": len(changed),
+            "done": jobs.BULK_DONE[action],
+            "inverse": jobs.BULK[action][2],
+            "ids": ",".join(map(str, changed)),
+            "undone": form.get("undo") == "1",
         }
-        # HTMX filter changes only need the results block re-rendered.
-        name = "jobs/_results.html" if request.headers.get("HX-Target") == "results" else "jobs/list.html"
-        return templates.TemplateResponse(request, name, ctx)
+        response = _render_jobs(request, f, page, partial=True, undo=undo)
+        response.headers["HX-Trigger"] = "counts-changed"
+        return response
 
     @app.get("/jobs/counts", response_class=HTMLResponse)
     def job_counts(request: Request):
@@ -106,7 +126,7 @@ def create_app() -> FastAPI:
         ACTIONS[action](job_id)
         job = jobs.get_job(job_id)
         name = "jobs/_actions.html" if ctx == "detail" else "jobs/_row.html"
-        response = templates.TemplateResponse(request, name, {"job": job})
+        response = templates.TemplateResponse(request, name, {"job": job, "no_select": ctx == "home"})
         response.headers["HX-Trigger"] = "counts-changed"  # list page refreshes its tab counts
         return response
 
@@ -120,6 +140,78 @@ def create_app() -> FastAPI:
                             content_disposition_type="inline")
 
     return app
+
+
+def _filters(view, q, site, min_score, score, sort) -> dict:
+    return {
+        "view": view if view in jobs.VIEWS else "pending",
+        "q": q.strip(),
+        "site": site,
+        "min_score": min_score,
+        "min_score_int": int(min_score) if str(min_score).isdigit() else None,
+        "score": score if score in jobs.SCORE_BANDS else "",
+        "sort": sort if sort in jobs.SORTS else "score",
+    }
+
+
+def _render_jobs(request: Request, f: dict, page: int, partial: bool = False, undo: dict | None = None):
+    items, total = jobs.list_jobs(f["view"], f["q"], f["site"], f["min_score_int"], f["sort"], page, f["score"])
+    pages = max(1, -(-total // jobs.PAGE_SIZE))
+    if page > pages:  # e.g. the last page emptied by a bulk discard
+        page = pages
+        items, total = jobs.list_jobs(f["view"], f["q"], f["site"], f["min_score_int"], f["sort"], page, f["score"])
+    ctx = {
+        "jobs": items,
+        "total": total,
+        "page": page,
+        "pages": pages,
+        "filters": f,
+        "views": jobs.VIEWS,
+        "sorts": jobs.SORTS,
+        "bands": jobs.SCORE_BANDS,
+        "counts": jobs.view_counts(),
+        "sites": jobs.list_sites(),
+        "undo": undo,
+        "nav": "jobs",
+    }
+    # HTMX filter changes and bulk actions only need the results block re-rendered.
+    if partial or request.headers.get("HX-Target") == "results":
+        return templates.TemplateResponse(request, "jobs/_results.html", ctx)
+    return templates.TemplateResponse(request, "jobs/list.html", ctx)
+
+
+def _greeting() -> str:
+    from datetime import datetime
+
+    from applypilot.ui.settings import load_profile
+
+    hour = datetime.now().astimezone().hour  # greeting follows the local clock
+    hello = "Buenos días" if 5 <= hour < 13 else "Buenas tardes" if hour < 20 else "Buenas noches"
+    personal = load_profile().get("personal") or {}
+    name = (personal.get("preferred_name") or (personal.get("full_name") or "").split(" ")[0]).strip()
+    return f"{hello}, {name}" if name else hello
+
+
+def _last_run() -> dict | None:
+    """The run in progress or the most recent one (from its log file)."""
+    from datetime import datetime, timezone
+
+    from applypilot.ui.runner import runner
+
+    run = runner.current
+    if run:
+        return {"title": run.title, "status": run.status,
+                "when": datetime.fromtimestamp(run.finished_at or run.started_at, timezone.utc).isoformat()}
+    logs = sorted(config.LOG_DIR.glob("ui-run-*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not logs:
+        return None
+    first = logs[0].read_text(encoding="utf-8", errors="replace").split("\n", 1)[0]
+    from applypilot.ui.pipeline_routes import STAGES
+
+    keys = first.removeprefix("$ applypilot run ").split(" --", 1)[0].split()
+    titles = [s.title for s in STAGES if s.key in keys]
+    return {"title": " + ".join(titles) or "Ejecución", "status": "logged",
+            "when": datetime.fromtimestamp(logs[0].stat().st_mtime, timezone.utc).isoformat()}
 
 
 def _get_or_404(job_id: int) -> dict:

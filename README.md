@@ -196,13 +196,16 @@ macOS / Linux: same commands, but activate the environment with `source .venv/bi
 
 1. **Setup**: fill in your profile, paste your resume as plain text, define your searches, and add an AI key. Use **Probar conexión** to check the key and model before saving. The model field needs the technical ID (e.g. `gemini-2.5-flash`), not the marketing name; a failed test lists the models your key can use.
 2. **Pipeline**: run **Buscar ofertas nuevas** (discover + enrich), then **Procesar con IA** (score, tailor, cover letters, PDFs).
-3. **Ofertas**: filter by status, score and source; open a job to read why it got its score, its tailored resume and cover letter; mark it as applied or discard it. **Abrir carpeta** opens the job's folder in `applications/`.
+3. **Ofertas**: filter by status, score band (7+, 5–6, 4 or less, unscored) and board; open a job to read why it got its score, its tailored resume and cover letter; mark it as applied or discard it. **Abrir carpeta** opens the job's folder in `applications/`.
+4. **Bulk actions**: tick rows (or the header box for the whole page, then **Seleccionar las N que coinciden** for every page) to discard or mark many jobs at once. Each bulk action can be undone right after.
+
+**Inicio** (home) shows how your search is going, from jobs found to applications sent, the best-scored jobs waiting for review, and the last pipeline run.
 
 ### Good to know
 
 - The server only listens on `127.0.0.1` and rejects requests from other sites. API keys are never sent back to the browser in full.
 - One pipeline run at a time. Each run is the regular `applypilot run ...` command in the background, with its full output saved to `~/.applypilot/logs/ui-run-*.log`. **Detener** stops it; closing the terminal stops it too. Work finished before stopping is kept.
-- Discarded jobs are skipped by every stage (enrich, score, tailor, cover, apply).
+- Discarded jobs are skipped by every stage (enrich, score, tailor, cover, apply) and stay in the database, so later searches recognize them and don't add them again. Discarding is not deleting.
 - The UI and the CLI share the same files and database, so you can mix them.
 - Auto-apply is not in the UI; use `applypilot apply` from the terminal if you want it.
 
@@ -222,6 +225,7 @@ macOS / Linux: same commands, but activate the environment with `source .venv/bi
 
 Besides the web UI (`src/applypilot/ui/`, `applypilot ui`):
 
+- **Company name**: JobSpy's company was read and thrown away, and every prompt (scoring, tailoring, cover letters, auto-apply) received the job board as the company (`COMPANY: linkedin`). The company is now stored and used; jobs found earlier get it the next time discovery sees them.
 - **Per-application folders** (`applications/`): jobs with the same title and site no longer overwrite each other's resume and cover letter (which also left the database pointing at the wrong file for auto-apply).
 - **Discarded jobs**: new `discarded_at` column; every stage skips discarded jobs. `run --stream` pending counts skip them too, so it can't loop forever.
 - **Scoring errors**: failed LLM calls are no longer saved as a score of 0 (which marked jobs as scored forever); they stay pending and are retried. Scoring stops after 3 consecutive failures and reports the reason. Existing fake zeros are cleared on startup.

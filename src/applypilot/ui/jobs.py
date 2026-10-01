@@ -27,9 +27,18 @@ VIEWS: dict[str, tuple[str, str]] = {
 }
 
 SORTS: dict[str, tuple[str, str]] = {
-    "score": ("Puntaje", "fit_score DESC NULLS LAST, discovered_at DESC"),
+    "score": ("Mejor puntaje primero", "fit_score DESC NULLS LAST, discovered_at DESC"),
     "recent": ("Más recientes", "discovered_at DESC"),
+    "company": ("Empresa", "COALESCE(company, site) COLLATE NOCASE ASC, fit_score DESC"),
     "title": ("Puesto", "title COLLATE NOCASE ASC"),
+}
+
+# Same bands as the score colors (green / amber / red).
+SCORE_BANDS: dict[str, tuple[str, str]] = {
+    "high": ("7 o más", "fit_score >= 7"),
+    "mid": ("5 y 6", "fit_score BETWEEN 5 AND 6"),
+    "low": ("4 o menos", "fit_score <= 4"),
+    "none": ("Sin puntuar", "fit_score IS NULL"),
 }
 
 
@@ -46,7 +55,7 @@ def job_status(job: dict) -> tuple[str, str]:
     if job.get("apply_error"):
         return "Error al aplicar", "error"
     if job.get("tailored_resume_path"):
-        return "Lista", "ready"
+        return "CV listo", "ready"
     if job.get("fit_score") is not None:
         return "Puntuada", "scored"
     if job.get("full_description"):
@@ -60,18 +69,12 @@ def _row_to_job(row: sqlite3.Row) -> dict:
     return job
 
 
-def list_jobs(
-    view: str = "pending",
-    q: str = "",
-    site: str = "",
-    min_score: int | None = None,
-    sort: str = "score",
-    page: int = 1,
-) -> tuple[list[dict], int]:
-    """Return one page of jobs matching the filters, plus the total match count."""
+def _where(view: str = "pending", q: str = "", site: str = "", min_score: int | None = None,
+           score_band: str = "") -> tuple[str, list]:
+    """SQL condition for a set of list filters. Shared by the list and bulk actions,
+    so "select all N that match" acts on exactly what the list shows."""
     conditions = [VIEWS.get(view, VIEWS["pending"])[1]]
     params: list = []
-
     if q:
         conditions.append("(title LIKE ? OR company LIKE ? OR site LIKE ? OR location LIKE ?)")
         like = f"%{q}%"
@@ -82,8 +85,22 @@ def list_jobs(
     if min_score is not None:
         conditions.append("fit_score >= ?")
         params.append(min_score)
+    if score_band in SCORE_BANDS:
+        conditions.append(SCORE_BANDS[score_band][1])
+    return " AND ".join(conditions), params
 
-    where = " AND ".join(conditions)
+
+def list_jobs(
+    view: str = "pending",
+    q: str = "",
+    site: str = "",
+    min_score: int | None = None,
+    sort: str = "score",
+    page: int = 1,
+    score_band: str = "",
+) -> tuple[list[dict], int]:
+    """Return one page of jobs matching the filters, plus the total match count."""
+    where, params = _where(view, q, site, min_score, score_band)
     order = SORTS.get(sort, SORTS["score"])[1]
     conn = get_connection()
 
@@ -93,6 +110,12 @@ def list_jobs(
         params + [PAGE_SIZE, (max(page, 1) - 1) * PAGE_SIZE],
     ).fetchall()
     return [_row_to_job(r) for r in rows], total
+
+
+def matching_ids(view: str = "pending", q: str = "", site: str = "", min_score: int | None = None,
+                 score_band: str = "") -> list[int]:
+    where, params = _where(view, q, site, min_score, score_band)
+    return [r[0] for r in get_connection().execute(f"SELECT rowid FROM jobs WHERE {where}", params)]
 
 
 def view_counts() -> dict[str, int]:
@@ -201,3 +224,71 @@ def mark_applied(job_id: int) -> None:
 
 def unmark_applied(job_id: int) -> None:
     _update(job_id, "apply_status = NULL, applied_at = NULL")
+
+
+# --- Bulk actions ------------------------------------------------------------
+# Each action only touches jobs where it changes something, and returns those
+# ids, so "undo" reverts exactly what was changed.
+BULK: dict[str, tuple[str, str, str]] = {
+    # action: (SET clause, only-where condition, inverse action)
+    "discard": ("discarded_at = :now", "discarded_at IS NULL", "restore"),
+    "restore": ("discarded_at = NULL", "discarded_at IS NOT NULL", "discard"),
+    "applied": ("apply_status = 'applied', applied_at = :now, apply_error = NULL, agent_id = NULL",
+                "applied_at IS NULL", "unapply"),
+    "unapply": ("apply_status = NULL, applied_at = NULL", "applied_at IS NOT NULL", "applied"),
+}
+BULK_DONE = {"discard": "descartada", "restore": "restaurada", "applied": "marcada como aplicada",
+             "unapply": "desmarcada"}
+
+
+def bulk_update(action: str, ids: list[int]) -> list[int]:
+    """Apply a bulk action; returns the ids it actually changed."""
+    set_sql, only, _ = BULK[action]
+    if not ids:
+        return []
+    conn = get_connection()
+    changed: list[int] = []
+    for start in range(0, len(ids), 500):  # stay under SQLite's variable limit
+        chunk = ids[start:start + 500]
+        marks = ",".join("?" * len(chunk))
+        changed += [r[0] for r in conn.execute(
+            f"SELECT rowid FROM jobs WHERE rowid IN ({marks}) AND {only}", chunk)]
+    for start in range(0, len(changed), 500):
+        chunk = changed[start:start + 500]
+        named = {f"i{n}": v for n, v in enumerate(chunk)}
+        conn.execute(
+            f"UPDATE jobs SET {set_sql} WHERE rowid IN ({','.join(':' + k for k in named)})",
+            {"now": _now(), **named},
+        )
+    conn.commit()
+    return changed
+
+
+# --- Home ------------------------------------------------------------------
+
+def home_stats(min_score: int) -> dict:
+    conn = get_connection()
+    one = lambda sql, *p: conn.execute(sql, p).fetchone()[0]
+    active = "discarded_at IS NULL"
+    return {
+        "found": one("SELECT COUNT(*) FROM jobs"),
+        "scored": one(f"SELECT COUNT(*) FROM jobs WHERE fit_score IS NOT NULL AND {active}"),
+        "unscored": one(f"SELECT COUNT(*) FROM jobs WHERE fit_score IS NULL AND full_description IS NOT NULL AND {active}"),
+        "good": one(f"SELECT COUNT(*) FROM jobs WHERE fit_score >= ? AND {active}", min_score),
+        "good_pending": one(f"SELECT COUNT(*) FROM jobs WHERE fit_score >= ? AND {active} AND applied_at IS NULL", min_score),
+        "tailored": one(f"SELECT COUNT(*) FROM jobs WHERE tailored_resume_path IS NOT NULL AND {active}"),
+        "applied": one("SELECT COUNT(*) FROM jobs WHERE applied_at IS NOT NULL"),
+        "applied_week": one("SELECT COUNT(*) FROM jobs WHERE applied_at >= datetime('now', '-7 days')"),
+        "discarded": one("SELECT COUNT(*) FROM jobs WHERE discarded_at IS NOT NULL"),
+        "last_found": one("SELECT MAX(discovered_at) FROM jobs"),
+        "sources": [r[0] for r in conn.execute(
+            "SELECT site FROM jobs GROUP BY site ORDER BY COUNT(*) DESC LIMIT 3")],
+    }
+
+
+def to_review(min_score: int, limit: int = 5) -> list[dict]:
+    rows = get_connection().execute(
+        "SELECT rowid AS id, * FROM jobs WHERE discarded_at IS NULL AND applied_at IS NULL "
+        "AND fit_score >= ? ORDER BY fit_score DESC, discovered_at DESC LIMIT ?", (min_score, limit),
+    ).fetchall()
+    return [_row_to_job(r) for r in rows]

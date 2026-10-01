@@ -1,13 +1,16 @@
 <div id="actions" class="actions">
-  <span class="status status-{{ job.status_class }}">{{ job.status_label }}</span>
+  {% if job.status_class in ("ready", "applied", "error", "warn", "progress") %}
+  <span><span class="pill {{ job.status_class }}">{{ job.status_label }}</span></span>
+  {% else %}<span class="state">{{ job.status_label }}</span>{% endif %}
+  {% set hx = 'hx-target="#actions" hx-swap="outerHTML" hx-vals=\'{"ctx": "detail"}\'' %}
   {% if job.discarded_at %}
-  <button class="secondary" hx-post="/jobs/{{ job.id }}/restore" hx-vals='{"ctx": "detail"}' hx-target="#actions" hx-swap="outerHTML">Restaurar</button>
+  <button class="secondary" hx-post="/jobs/{{ job.id }}/restore" {{ hx | safe }}>Restaurar</button>
   {% else %}
   {% if job.applied_at %}
-  <button class="secondary outline" hx-post="/jobs/{{ job.id }}/unapply" hx-vals='{"ctx": "detail"}' hx-target="#actions" hx-swap="outerHTML">Desmarcar aplicada</button>
+  <button class="secondary" hx-post="/jobs/{{ job.id }}/unapply" {{ hx | safe }}>Desmarcar aplicada</button>
   {% else %}
-  <button hx-post="/jobs/{{ job.id }}/applied" hx-vals='{"ctx": "detail"}' hx-target="#actions" hx-swap="outerHTML">Ya apliqué</button>
+  <button hx-post="/jobs/{{ job.id }}/applied" {{ hx | safe }}>Ya apliqué</button>
   {% endif %}
-  <button class="secondary outline" hx-post="/jobs/{{ job.id }}/discard" hx-vals='{"ctx": "detail"}' hx-target="#actions" hx-swap="outerHTML">Descartar</button>
+  <button class="secondary" hx-post="/jobs/{{ job.id }}/discard" {{ hx | safe }}>Descartar</button>
   {% endif %}
 </div>

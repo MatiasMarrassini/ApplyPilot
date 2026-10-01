@@ -1,27 +1,43 @@
+{% from "_icons.html" import icon %}
+{% set sb = sidebar_state() %}
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}ApplyPilot{% endblock %}</title>
-  <link rel="stylesheet" href="/static/vendor/pico.min.css">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preload" href="/static/vendor/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/app.css">
   <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/app.js" defer></script>
 </head>
 <body>
-  <header class="container topbar">
-    <nav>
-      <ul><li><a href="/" class="brand"><strong>ApplyPilot</strong></a></li></ul>
-      <ul>
-        <li><a href="/jobs" {% if nav == "jobs" %}aria-current="page"{% endif %}>Ofertas</a></li>
-        <li><a href="/setup" {% if nav == "setup" %}aria-current="page"{% endif %}>Setup</a></li>
-        <li><a href="/pipeline" {% if nav == "pipeline" %}aria-current="page"{% endif %}>Pipeline</a></li>
-      </ul>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="/"><span class="brand-mark">{{ icon("mark") }}</span>ApplyPilot</a>
+    <nav class="nav" aria-label="Principal">
+      <a href="/" {% if nav == "home" %}aria-current="page"{% endif %}>{{ icon("home") }}Inicio</a>
+      <a href="/jobs" {% if nav == "jobs" %}aria-current="page"{% endif %}>{{ icon("jobs") }}Ofertas<span class="count" id="nav-pending">{{ sb.pending }}</span></a>
+      <a href="/pipeline" {% if nav == "pipeline" %}aria-current="page"{% endif %}>{{ icon("pipeline") }}Pipeline</a>
+      <a href="/setup" {% if nav == "setup" %}aria-current="page"{% endif %}>{{ icon("setup") }}Setup</a>
     </nav>
-  </header>
-  <main class="container">
+    <div class="sidebar-foot">
+      {% if sb.provider %}
+      <a class="status-line" href="/setup/keys"><span class="dot"></span><span><strong>{{ sb.provider }}</strong> {{ sb.model or "modelo por defecto" }}</span></a>
+      {% else %}
+      <a class="status-line" href="/setup/keys"><span class="dot warn"></span><span>Sin modelo de IA configurado</span></a>
+      {% endif %}
+      {% if sb.running %}
+      <a class="status-line" href="/pipeline"><span class="dot busy"></span><span><strong>{{ sb.running }}</strong> en curso</span></a>
+      {% else %}
+      <span class="status-line"><span class="dot idle"></span><span>Sin ejecuciones en curso</span></span>
+      {% endif %}
+      <span class="version">ApplyPilot {{ version }}</span>
+    </div>
+  </aside>
+  <main class="main"><div class="page">
     {% block content %}{% endblock %}
-  </main>
-  <footer class="container muted"><small>ApplyPilot {{ version }} · UI local</small></footer>
+  </div></main>
+</div>
 </body>
 </html>

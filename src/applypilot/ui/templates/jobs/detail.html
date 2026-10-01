@@ -1,82 +1,90 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}{{ job.title }} · ApplyPilot{% endblock %}
 {% block content %}
-<p><a href="/jobs" class="muted">← Volver a ofertas</a></p>
+<a class="link back" href="/jobs">Volver a ofertas</a>
 
-<header class="job-header">
-  <div class="job-score">{% include "jobs/_score.html" %}</div>
+<div class="detail">
   <div>
-    <h2>{{ job.title or "(sin título)" }}</h2>
-    <p class="muted">
-      {% if job.company %}{{ job.company }} (vía {{ job.site }}){% else %}{{ job.site or "Fuente desconocida" }}{% endif %}
-      {% if job.location %} · {{ job.location }}{% endif %}
-      {% if job.salary %} · {{ job.salary }}{% endif %}
-      {% if job.discovered_at %} · encontrada el {{ job.discovered_at[:10] }}{% endif %}
-    </p>
-  </div>
-</header>
+    <header class="detail-head">
+      <h1>{{ job.title or "(sin título)" }}</h1>
+      <p class="detail-meta">
+        <span>{% if job.company %}<strong>{{ job.company }}</strong>, vía {{ job.site }}{% else %}{{ job.site or "Portal desconocido" }}{% endif %}</span>
+        <span>{{ job.location or "Ubicación no indicada" }}</span>
+        {% if job.salary %}<span>{{ job.salary }}</span>{% endif %}
+        <span>Encontrada {{ job.discovered_at | ago }}</span>
+      </p>
+    </header>
 
-{% include "jobs/_actions.html" %}
-
-<p class="links">
-  <a href="{{ job.url | http_url }}" target="_blank" rel="noopener noreferrer">Ver oferta original ↗</a>
-  {% if job.application_url and job.application_url != job.url %}
-  · <a href="{{ job.application_url | http_url }}" target="_blank" rel="noopener noreferrer">Formulario de postulación ↗</a>
-  {% endif %}
-</p>
-
-{% if job.apply_error %}
-<article class="notice-error"><strong>Error al aplicar:</strong> {{ job.apply_error }}</article>
-{% endif %}
-
-{% if job.score_reasoning %}
-{% set lines = job.score_reasoning.split("\n", 1) %}
-<section>
-  <h4>Por qué este puntaje</h4>
-  {% if lines|length > 1 %}
-  <p class="keywords">{{ lines[0] }}</p>
-  <p>{{ lines[1] }}</p>
-  {% else %}
-  <p>{{ lines[0] }}</p>
-  {% endif %}
-</section>
-{% endif %}
-
-<section>
-  {% if folder %}
-  <div class="folder-bar">
-    <button class="secondary outline small" hx-post="/jobs/{{ job.id }}/open-folder" hx-target="#folder-status">Abrir carpeta</button>
-    <small class="muted"><code>{{ folder }}</code></small>
-    <span id="folder-status"></span>
-  </div>
-  {% endif %}
-  <details {% if docs.cv.text %}open{% endif %}>
-    <summary><strong>CV personalizado</strong>
-      {% if not docs.cv.text %}<small class="muted"> — todavía no generado</small>{% endif %}</summary>
-    {% if docs.cv.text %}
-    {% if docs.cv.has_pdf %}<p><a href="/jobs/{{ job.id }}/cv.pdf" target="_blank">Abrir PDF ↗</a></p>{% endif %}
-    <pre class="doc">{{ docs.cv.text }}</pre>
-    {% else %}
-    <p class="muted">Se genera con <code>applypilot run tailor</code> para ofertas con puntaje suficiente.</p>
+    {% if job.apply_error %}
+    <article class="notice-error"><strong>Error al aplicar:</strong> {{ job.apply_error }}</article>
     {% endif %}
-  </details>
 
-  <details {% if docs.cover.text %}open{% endif %}>
-    <summary><strong>Carta de presentación</strong>
-      {% if not docs.cover.text %}<small class="muted"> — todavía no generada</small>{% endif %}</summary>
-    {% if docs.cover.text %}
-    {% if docs.cover.has_pdf %}<p><a href="/jobs/{{ job.id }}/cover.pdf" target="_blank">Abrir PDF ↗</a></p>{% endif %}
-    <pre class="doc">{{ docs.cover.text }}</pre>
-    {% else %}
-    <p class="muted">Se genera con <code>applypilot run cover</code> después del CV personalizado.</p>
+    {% if job.score_reasoning %}
+    {% set lines = job.score_reasoning.split("\n", 1) %}
+    <section class="reasoning">
+      <h3>Por qué este puntaje</h3>
+      {% if lines | length > 1 %}
+      {% set kws = lines[0].split(",") | map("trim") | select | list %}
+      {% if kws %}<div class="keywords">{% for k in kws %}<span>{{ k }}</span>{% endfor %}</div>{% endif %}
+      <p>{{ lines[1] }}</p>
+      {% else %}
+      <p>{{ lines[0] }}</p>
+      {% endif %}
+    </section>
     {% endif %}
-  </details>
 
-  <details>
-    <summary><strong>Descripción de la oferta</strong></summary>
-    {% set desc = job.full_description or job.description %}
-    {% if desc %}<pre class="doc">{{ desc }}</pre>
-    {% else %}<p class="muted">Sin descripción todavía (se obtiene con <code>applypilot run enrich</code>).</p>{% endif %}
-  </details>
-</section>
+    <details {% if docs.cv.text %}open{% endif %}>
+      <summary><strong>CV personalizado</strong>
+        {% if not docs.cv.text %}<span class="muted">todavía no generado</span>{% endif %}</summary>
+      {% if docs.cv.text %}
+      {% if docs.cv.has_pdf %}<p><a href="/jobs/{{ job.id }}/cv.pdf" target="_blank">Abrir PDF</a></p>{% endif %}
+      <pre class="doc">{{ docs.cv.text }}</pre>
+      {% else %}
+      <p class="muted">Se genera en Pipeline con "Procesar con IA" para las ofertas con puntaje suficiente.</p>
+      {% endif %}
+    </details>
+
+    <details {% if docs.cover.text %}open{% endif %}>
+      <summary><strong>Carta de presentación</strong>
+        {% if not docs.cover.text %}<span class="muted">todavía no generada</span>{% endif %}</summary>
+      {% if docs.cover.text %}
+      {% if docs.cover.has_pdf %}<p><a href="/jobs/{{ job.id }}/cover.pdf" target="_blank">Abrir PDF</a></p>{% endif %}
+      <pre class="doc">{{ docs.cover.text }}</pre>
+      {% else %}
+      <p class="muted">Se escribe después del CV personalizado.</p>
+      {% endif %}
+    </details>
+
+    <details {% if not docs.cv.text %}open{% endif %}>
+      <summary><strong>Descripción de la oferta</strong></summary>
+      {% set desc = job.full_description or job.description %}
+      {% if desc %}<pre class="doc">{{ desc }}</pre>
+      {% else %}<p class="muted">Sin descripción todavía. Se obtiene con la etapa "Traer descripciones" de Pipeline.</p>{% endif %}
+    </details>
+  </div>
+
+  <aside class="aside">
+    <div class="panel">
+      {% set score_size = "big" %}{% include "jobs/_score.html" %}
+    </div>
+    <div class="panel">
+      <h3>Estado</h3>
+      {% include "jobs/_actions.html" %}
+    </div>
+    <div class="panel links">
+      <a href="{{ job.url | http_url }}" target="_blank" rel="noopener noreferrer">Ver oferta original {{ icon("external") }}</a>
+      {% if job.application_url and job.application_url != job.url %}
+      <a href="{{ job.application_url | http_url }}" target="_blank" rel="noopener noreferrer">Formulario de postulación {{ icon("external") }}</a>
+      {% endif %}
+    </div>
+    {% if folder %}
+    <div class="panel folder-bar">
+      <button class="secondary small" hx-post="/jobs/{{ job.id }}/open-folder" hx-target="#folder-status">Abrir carpeta</button>
+      <code>{{ folder }}</code>
+      <span id="folder-status"></span>
+    </div>
+    {% endif %}
+  </aside>
+</div>
 {% endblock %}

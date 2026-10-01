@@ -1,19 +1,33 @@
-<tr id="job-{{ job.id }}" class="{{ 'is-discarded' if job.discarded_at }}">
-  <td>{% include "jobs/_score.html" %}</td>
-  <td><a href="/jobs/{{ job.id }}">{{ job.title or "(sin título)" }}</a></td>
-  <td>{% if job.company %}{{ job.company }}<br><small class="muted">vía {{ job.site }}</small>{% else %}<span class="muted">{{ job.site or "—" }}</span>{% endif %}</td>
-  <td>{{ job.location or "—" }}</td>
-  <td><span class="status status-{{ job.status_class }}">{{ job.status_label }}</span></td>
-  <td class="row-actions">
+{% set ctx = "home" if no_select else "row" %}
+<div class="row {{ 'is-discarded' if job.discarded_at }}" id="job-{{ job.id }}">
+  {% if not no_select %}<input type="checkbox" class="pick" name="ids" value="{{ job.id }}" aria-label="Seleccionar {{ job.title }}">{% endif %}
+  {% include "jobs/_score.html" %}
+  <div>
+    <a class="title" href="/jobs/{{ job.id }}">{{ job.title or "(sin título)" }}</a>
+    {% if job.location %}<span class="sub-line">{{ job.location }}</span>
+    {% else %}<span class="sub-line unknown">Ubicación no indicada</span>{% endif %}
+  </div>
+  <div class="company">
+    {% if job.company %}<b>{{ job.company }}</b><span>vía {{ job.site }}</span>
+    {% else %}<b class="muted">{{ job.site or "—" }}</b><span>Empresa sin dato</span>{% endif %}
+  </div>
+  <span class="when">{{ job.discovered_at | ago }}</span>
+  <span class="status-cell">
+    {% if job.status_class in ("ready", "applied", "error", "warn", "progress") %}
+    <span class="pill {{ job.status_class }}">{{ job.status_label }}</span>
+    {% else %}<span class="state">{{ job.status_label }}</span>{% endif %}
+  </span>
+  <div class="row-actions">
+    {% set hx = 'hx-target="closest .row" hx-swap="outerHTML" hx-vals=\'{"ctx": "' ~ ctx ~ '"}\'' %}
     {% if job.discarded_at %}
-    <button class="secondary outline small" hx-post="/jobs/{{ job.id }}/restore" hx-target="closest tr" hx-swap="outerHTML">Restaurar</button>
+    <button class="secondary small" hx-post="/jobs/{{ job.id }}/restore" {{ hx | safe }}>Restaurar</button>
     {% else %}
     {% if job.applied_at %}
-    <button class="secondary outline small" hx-post="/jobs/{{ job.id }}/unapply" hx-target="closest tr" hx-swap="outerHTML">Desmarcar</button>
+    <button class="secondary small" hx-post="/jobs/{{ job.id }}/unapply" {{ hx | safe }}>Desmarcar</button>
     {% else %}
-    <button class="outline small" hx-post="/jobs/{{ job.id }}/applied" hx-target="closest tr" hx-swap="outerHTML">Ya apliqué</button>
+    <button class="secondary small" hx-post="/jobs/{{ job.id }}/applied" {{ hx | safe }}>Ya apliqué</button>
     {% endif %}
-    <button class="secondary outline small" hx-post="/jobs/{{ job.id }}/discard" hx-target="closest tr" hx-swap="outerHTML">Descartar</button>
+    <button class="ghost small" hx-post="/jobs/{{ job.id }}/discard" {{ hx | safe }}>Descartar</button>
     {% endif %}
-  </td>
-</tr>
+  </div>
+</div>

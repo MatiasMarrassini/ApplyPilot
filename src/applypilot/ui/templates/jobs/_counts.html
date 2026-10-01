@@ -1,2 +1,2 @@
-{% for name, n in counts.items() %}<small class="count" id="count-{{ name }}" hx-swap-oob="true">{{ n }}</small>
-{% endfor %}
+{% for name, n in counts.items() %}<span class="count" id="count-{{ name }}" hx-swap-oob="true">{{ n }}</span>
+{% endfor %}<span class="count" id="nav-pending" hx-swap-oob="true">{{ counts.pending }}</span>
