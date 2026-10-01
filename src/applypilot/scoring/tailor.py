@@ -15,7 +15,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from applypilot.applications import JOB_FILE, RESUME_FILE, TAILOR_REPORT_FILE, application_dir
+from applypilot.applications import JOB_FILE, RESUME_FILE, TAILOR_REPORT_FILE, application_dir, company_for_prompt
 from applypilot.config import RESUME_PATH, load_profile
 from applypilot.database import get_connection, get_jobs_by_stage
 from applypilot.llm import get_client
@@ -371,7 +371,7 @@ def tailor_resume(
     """
     job_text = (
         f"TITLE: {job['title']}\n"
-        f"COMPANY: {job['site']}\n"
+        f"COMPANY: {company_for_prompt(job)}\n"
         f"LOCATION: {job.get('location', 'N/A')}\n\n"
         f"DESCRIPTION:\n{(job.get('full_description') or '')[:6000]}"
     )
@@ -499,7 +499,8 @@ def run_tailoring(min_score: int = 7, limit: int = 20,
             job_path = folder / JOB_FILE
             job_desc = (
                 f"Title: {job['title']}\n"
-                f"Company: {job['site']}\n"
+                f"Company: {company_for_prompt(job)}\n"
+                f"Source: {job['site']}\n"
                 f"Location: {job.get('location', 'N/A')}\n"
                 f"Score: {job.get('fit_score', 'N/A')}\n"
                 f"URL: {job['url']}\n\n"

@@ -10,7 +10,7 @@ import logging
 import time
 from datetime import datetime, timezone
 
-from applypilot.applications import COVER_LETTER_FILE, application_dir
+from applypilot.applications import COVER_LETTER_FILE, application_dir, company_for_prompt
 from applypilot.config import RESUME_PATH, load_profile
 from applypilot.database import get_connection, get_jobs_by_stage
 from applypilot.llm import get_client
@@ -138,7 +138,7 @@ def generate_cover_letter(
     """
     job_text = (
         f"TITLE: {job['title']}\n"
-        f"COMPANY: {job['site']}\n"
+        f"COMPANY: {company_for_prompt(job)}\n"
         f"LOCATION: {job.get('location', 'N/A')}\n\n"
         f"DESCRIPTION:\n{(job.get('full_description') or '')[:6000]}"
     )

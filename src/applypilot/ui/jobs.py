@@ -73,9 +73,9 @@ def list_jobs(
     params: list = []
 
     if q:
-        conditions.append("(title LIKE ? OR site LIKE ? OR location LIKE ?)")
+        conditions.append("(title LIKE ? OR company LIKE ? OR site LIKE ? OR location LIKE ?)")
         like = f"%{q}%"
-        params += [like, like, like]
+        params += [like, like, like, like]
     if site:
         conditions.append("site = ?")
         params.append(site)

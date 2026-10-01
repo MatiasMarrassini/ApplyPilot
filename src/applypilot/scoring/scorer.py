@@ -11,6 +11,7 @@ import re
 import time
 from datetime import datetime, timezone
 
+from applypilot.applications import company_for_prompt
 from applypilot.config import RESUME_PATH, load_profile
 from applypilot.database import get_connection, get_jobs_by_stage
 from applypilot.llm import get_client
@@ -86,7 +87,7 @@ def score_job(resume_text: str, job: dict) -> dict:
     """
     job_text = (
         f"TITLE: {job['title']}\n"
-        f"COMPANY: {job['site']}\n"
+        f"COMPANY: {company_for_prompt(job)}\n"
         f"LOCATION: {job.get('location', 'N/A')}\n\n"
         f"DESCRIPTION:\n{(job.get('full_description') or '')[:6000]}"
     )

@@ -92,6 +92,7 @@ def init_db(db_path: Path | str | None = None) -> sqlite3.Connection:
             -- Discovery stage (smart_extract / job_search)
             url                   TEXT PRIMARY KEY,
             title                 TEXT,
+            company               TEXT,
             salary                TEXT,
             description           TEXT,
             location              TEXT,
@@ -140,6 +141,9 @@ def init_db(db_path: Path | str | None = None) -> sqlite3.Connection:
     # Run migrations for any columns added after initial schema
     ensure_columns(conn)
     _reset_failed_scores(conn)
+    # Workday rows store the employer as `site`; that is the company.
+    conn.execute("UPDATE jobs SET company = site WHERE company IS NULL AND strategy = 'workday_api'")
+    conn.commit()
 
     return conn
 
@@ -166,6 +170,7 @@ _ALL_COLUMNS: dict[str, str] = {
     # Discovery
     "url": "TEXT PRIMARY KEY",
     "title": "TEXT",
+    "company": "TEXT",  # hiring company; `site` is the board/source it came from
     "salary": "TEXT",
     "description": "TEXT",
     "location": "TEXT",

@@ -8,7 +8,7 @@
   <div>
     <h2>{{ job.title or "(sin título)" }}</h2>
     <p class="muted">
-      {{ job.site or "Fuente desconocida" }}
+      {% if job.company %}{{ job.company }} (vía {{ job.site }}){% else %}{{ job.site or "Fuente desconocida" }}{% endif %}
       {% if job.location %} · {{ job.location }}{% endif %}
       {% if job.salary %} · {{ job.salary }}{% endif %}
       {% if job.discovered_at %} · encontrada el {{ job.discovered_at[:10] }}{% endif %}

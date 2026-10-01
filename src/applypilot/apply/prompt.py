@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 from applypilot import config
+from applypilot.applications import company_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -519,7 +520,7 @@ def build_prompt(job: dict, tailored_resume: str,
 == JOB ==
 URL: {job.get('application_url') or job['url']}
 Title: {job['title']}
-Company: {job.get('site', 'Unknown')}
+Company: {company_for_prompt(job)}
 Fit Score: {job.get('fit_score', 'N/A')}/10
 
 == FILES ==

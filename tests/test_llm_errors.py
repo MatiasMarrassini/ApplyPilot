@@ -93,5 +93,5 @@ def test_init_db_leaves_no_open_write_transaction():
         "c = get_connection(); c.execute(\"INSERT OR IGNORE INTO jobs (url) VALUES ('https://lock/1')\"); c.commit()\n"
         "print('ok')\n"
     )
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60, check=False)
     assert out.stdout.strip() == "ok", out.stderr

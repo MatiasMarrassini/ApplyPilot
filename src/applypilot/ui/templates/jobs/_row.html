@@ -1,7 +1,7 @@
 <tr id="job-{{ job.id }}" class="{{ 'is-discarded' if job.discarded_at }}">
   <td>{% include "jobs/_score.html" %}</td>
   <td><a href="/jobs/{{ job.id }}">{{ job.title or "(sin título)" }}</a></td>
-  <td>{{ job.site or "—" }}</td>
+  <td>{% if job.company %}{{ job.company }}<br><small class="muted">vía {{ job.site }}</small>{% else %}<span class="muted">{{ job.site or "—" }}</span>{% endif %}</td>
   <td>{{ job.location or "—" }}</td>
   <td><span class="status status-{{ job.status_class }}">{{ job.status_label }}</span></td>
   <td class="row-actions">

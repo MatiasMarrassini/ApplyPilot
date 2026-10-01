@@ -22,6 +22,19 @@ JOB_FILE = "job.txt"
 TAILOR_REPORT_FILE = "tailor_report.json"
 
 
+def company_of(job: dict) -> str:
+    """The hiring company, or "" when unknown.
+
+    `site` is the job board (linkedin, indeed, ...) for most jobs, so it must
+    not be passed off as the company: the AI would address letters to LinkedIn.
+    """
+    return (job.get("company") or "").strip()
+
+
+def company_for_prompt(job: dict) -> str:
+    return company_of(job) or "Not specified (infer it from the job description if stated)"
+
+
 def _slug(text: str | None, max_len: int) -> str:
     text = re.sub(r"[^\w\s-]", "", text or "")[:max_len].strip()
     return re.sub(r"\s+", "_", text) or "job"
@@ -31,7 +44,8 @@ def application_dir(job: dict, create: bool = True) -> Path:
     """Folder for one job's documents. Deterministic: same job, same folder."""
     day = (job.get("discovered_at") or datetime.now(timezone.utc).isoformat())[:10]
     digest = hashlib.sha1(job["url"].encode("utf-8")).hexdigest()[:8]
-    folder = APPLICATIONS_DIR / f"{day}_{_slug(job.get('site'), 20)}_{_slug(job.get('title'), 50)}_{digest}"
+    who = company_of(job) or job.get("site")
+    folder = APPLICATIONS_DIR / f"{day}_{_slug(who, 20)}_{_slug(job.get('title'), 50)}_{digest}"
     if create:
         folder.mkdir(parents=True, exist_ok=True)
     return folder
