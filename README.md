@@ -197,7 +197,8 @@ macOS / Linux: same commands, but activate the environment with `source .venv/bi
 1. **Setup**: fill in your profile, paste your resume as plain text, define your searches, and add an AI key. Use **Probar conexión** to check the key and model before saving. The model field needs the technical ID (e.g. `gemini-2.5-flash`), not the marketing name; a failed test lists the models your key can use.
 2. **Pipeline**: run **Buscar ofertas nuevas** (discover + enrich), then **Procesar con IA** (score, tailor, cover letters, PDFs).
 3. **Ofertas**: filter by status, score band (7+, 5–6, 4 or less, unscored) and board; open a job to read why it got its score, its tailored resume and cover letter; mark it as applied or discard it. **Abrir carpeta** opens the job's folder in `applications/`.
-4. **Bulk actions**: tick rows (or the header box for the whole page, then **Seleccionar las N que coinciden** for every page) to discard or mark many jobs at once. Each bulk action can be undone right after.
+4. **Portales** (in Setup): choose which job sources to search, grouped by country or region (international boards, Argentina, Latin America, remote, multinationals, US, Canada). Tick a whole country or single portals; sources marked "Usa IA" read each page with the AI model and spend tokens on every search.
+5. **Bulk actions**: tick rows (or the header box for the whole page, then **Seleccionar las N que coinciden** for every page) to discard or mark many jobs at once. Each bulk action can be undone right after.
 
 **Inicio** (home) shows how your search is going, from jobs found to applications sent, the best-scored jobs waiting for review, and the last pipeline run.
 
@@ -226,6 +227,9 @@ macOS / Linux: same commands, but activate the environment with `source .venv/bi
 Besides the web UI (`src/applypilot/ui/`, `applypilot ui`):
 
 - **Company name**: JobSpy's company was read and thrown away, and every prompt (scoring, tailoring, cover letters, auto-apply) received the job board as the company (`COMPANY: linkedin`). The company is now stored and used; jobs found earlier get it the next time discovery sees them.
+- **Argentina and Latin America sources**: built-in extractors for **Computrabajo**, **EmpleosIT** (Argentina) and **GetOnBoard** (Latin America, official API). They need no AI: GetOnBoard and EmpleosIT bring the full description, and Computrabajo's detail pages are read from their structured data. They start disabled; turn them on in Setup > Portales.
+- **Choosing sources**: discovery used to run every Workday portal and every direct site on each search. Each source now has a group (`group:` in `config/sites.yaml` and `config/employers.yaml`) and can be turned off; choices are stored under `sources` in `searches.yaml`.
+- **Location filter** recognizes Spanish remote wording ("remoto", "teletrabajo", "home office").
 - **Per-application folders** (`applications/`): jobs with the same title and site no longer overwrite each other's resume and cover letter (which also left the database pointing at the wrong file for auto-apply).
 - **Discarded jobs**: new `discarded_at` column; every stage skips discarded jobs. `run --stream` pending counts skip them too, so it can't loop forever.
 - **Scoring errors**: failed LLM calls are no longer saved as a score of 0 (which marked jobs as scored forever); they stay pending and are retried. Scoring stops after 3 consecutive failures and reports the reason. Existing fake zeros are cleared on startup.

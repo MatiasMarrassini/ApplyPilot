@@ -40,7 +40,7 @@ def client(monkeypatch):
 
 
 def test_setup_pages_render(client):
-    for path in ("/setup", "/setup/profile", "/setup/resume", "/setup/searches", "/setup/keys"):
+    for path in ("/setup", "/setup/profile", "/setup/resume", "/setup/searches", "/setup/portals", "/setup/keys"):
         assert client.get(path).status_code == 200, path
 
 
@@ -81,7 +81,7 @@ def test_searches_write_the_keys_discovery_reads(client):
         "tier1": "Backend Engineer\n", "tier2": "Python Developer", "tier3": "",
         "loc.0": "Buenos Aires, Argentina", "loc.1": "Remote", "loc_remote.1": "on", "loc.2": "",
         "accept": "Buenos Aires\nCABA", "reject": "",
-        "sites": ["linkedin", "indeed"], "results_per_site": "30", "hours_old": "48",
+        "results_per_site": "30", "hours_old": "48",
         "country_indeed": "Argentina",
     }
     r = client.post("/setup/searches", data=form, headers=HX)
@@ -90,7 +90,6 @@ def test_searches_write_the_keys_discovery_reads(client):
     assert cfg["queries"] == [{"query": "Backend Engineer", "tier": 1}, {"query": "Python Developer", "tier": 2}]
     assert cfg["locations"] == [{"location": "Buenos Aires, Argentina", "remote": False},
                                 {"location": "Remote", "remote": True}]
-    assert cfg["sites"] == ["indeed", "linkedin"]
     assert cfg["location_accept"] == cfg["location"]["accept_patterns"] == ["Buenos Aires", "CABA"]
     assert cfg["defaults"] == {"results_per_site": 30, "hours_old": 48, "country_indeed": "argentina"}
 

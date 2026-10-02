@@ -49,7 +49,9 @@ def overview(request: Request):
         ("CV", "/setup/resume", config.RESUME_PATH.exists(),
          "Tu CV base en texto, el que la IA usa para puntuar y personalizar."),
         ("Búsquedas", "/setup/searches", has_searches,
-         "Qué puestos buscar, dónde y en qué portales."),
+         "Qué puestos buscar y dónde."),
+        ("Portales", "/setup/portals", has_searches and bool(settings.load_searches()[0].get("sources")),
+         "En qué sitios buscar, por país."),
         ("Claves de IA", "/setup/keys", any(env.get(k) for k in ("GEMINI_API_KEY", "OPENAI_API_KEY", "LLM_URL")),
          "El modelo de IA que puntúa ofertas y escribe CVs y cartas."),
     ]
@@ -161,7 +163,6 @@ async def resume_upload(request: Request, file: UploadFile):
 def _searches_ctx(cfg: dict, exists: bool, **extra) -> dict:
     return {
         "v": settings.searches_form_values(cfg),
-        "boards": settings.BOARDS,
         "exists": exists,
         "errors": {},
         "saved": False,
@@ -215,3 +216,34 @@ async def keys_save(request: Request):
 async def keys_test(request: Request):
     form = await request.form()
     return templates.TemplateResponse(request, "setup/_llm_test.html", {"result": settings.test_llm(form)})
+
+
+# --- Portals ---------------------------------------------------------------
+
+def _portals_ctx(cfg: dict, exists: bool, **extra) -> dict:
+    return {
+        "groups": settings.portals_view(cfg),
+        "exists": exists,
+        "country_indeed": (cfg.get("defaults") or {}).get("country_indeed", ""),
+        "errors": {},
+        "saved": False,
+        **extra,
+    }
+
+
+@router.get("/portals", response_class=HTMLResponse)
+def portals_page(request: Request):
+    cfg, exists = settings.load_searches()
+    return _render(request, "setup/portals.html", "portals", **_portals_ctx(cfg, exists))
+
+
+@router.post("/portals", response_class=HTMLResponse)
+async def portals_save(request: Request):
+    form = await request.form()
+    cfg, errors = settings.save_portals(form)
+    if errors:
+        # Show what the user ticked, not the saved state.
+        from applypilot import sources
+        cfg = {**cfg, "sources": {s.key: s.key in form.getlist("src") for s in sources.all_sources()}}
+    ctx = _portals_ctx(cfg, config.SEARCH_CONFIG_PATH.exists(), errors=errors, saved=not errors)
+    return _form_or_page(request, "setup/_portals_form.html", "setup/portals.html", "portals", **ctx)

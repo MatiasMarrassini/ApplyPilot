@@ -31,7 +31,7 @@ class Stage:
 
 
 STAGES = [
-    Stage("discover", "Buscar ofertas", "Busca en los portales que elegiste, en portales Workday y en sitios de empleo directos."),
+    Stage("discover", "Buscar ofertas", "Busca en los portales que activaste en Setup > Portales."),
     Stage("enrich", "Traer descripciones", "Abre cada oferta nueva para obtener la descripción completa y el link de postulación."),
     Stage("score", "Puntuar", "La IA compara cada oferta con tu CV y le da un puntaje de 1 a 10.", ai=True),
     Stage("tailor", "Personalizar CV", "Escribe un CV adaptado para cada oferta con puntaje suficiente.", ai=True),

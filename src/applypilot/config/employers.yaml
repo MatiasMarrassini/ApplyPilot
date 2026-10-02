@@ -8,84 +8,98 @@ employers:
 
   td:
     name: "TD Bank"
+    group: ca
     tenant: "td"
     site_id: "TD_Bank_Careers"
     base_url: "https://td.wd3.myworkdayjobs.com"
 
   cibc:
     name: "CIBC"
+    group: ca
     tenant: "cibc"
     site_id: "search"
     base_url: "https://cibc.wd3.myworkdayjobs.com"
 
   rbc:
     name: "RBC"
+    group: ca
     tenant: "rbc"
     site_id: "RBCGLOBAL1"
     base_url: "https://rbc.wd3.myworkdayjobs.com"
 
   bmo:
     name: "BMO"
+    group: ca
     tenant: "bmo"
     site_id: "External"
     base_url: "https://bmo.wd3.myworkdayjobs.com"
 
   manulife:
     name: "Manulife"
+    group: ca
     tenant: "manulife"
     site_id: "MFCJH_Jobs"
     base_url: "https://manulife.wd3.myworkdayjobs.com"
 
   sunlife:
     name: "Sun Life"
+    group: ca
     tenant: "sunlife"
     site_id: "Experienced-Jobs"
     base_url: "https://sunlife.wd3.myworkdayjobs.com"
 
   desjardins:
     name: "Desjardins"
+    group: ca
     tenant: "desjardins"
     site_id: "Desjardins"
     base_url: "https://desjardins.wd10.myworkdayjobs.com"
 
   intact:
     name: "Intact Financial"
+    group: ca
     tenant: "intactfc"
     site_id: "intactfc"
     base_url: "https://intactfc.wd3.myworkdayjobs.com"
 
   aviva:
     name: "Aviva Canada"
+    group: ca
     tenant: "aviva"
     site_id: "External"
     base_url: "https://aviva.wd1.myworkdayjobs.com"
 
   tmx:
     name: "TMX Group"
+    group: ca
     tenant: "tmx"
     site_id: "TMX_Careers"
     base_url: "https://tmx.wd3.myworkdayjobs.com"
 
   brookfield:
     name: "Brookfield"
+    group: ca
     tenant: "brookfield"
     site_id: "brookfield"
     base_url: "https://brookfield.wd5.myworkdayjobs.com"
 
   fis:
     name: "FIS Global"
+    group: multinational
     tenant: "fis"
     site_id: "SearchJobs"
     base_url: "https://fis.wd5.myworkdayjobs.com"
 
   mastercard:
     name: "Mastercard"
+    group: multinational
     tenant: "mastercard"
     site_id: "CorporateCareers"
     base_url: "https://mastercard.wd1.myworkdayjobs.com"
 
   paypal:
     name: "PayPal"
+    group: multinational
     tenant: "paypal"
     site_id: "jobs"
     base_url: "https://paypal.wd1.myworkdayjobs.com"
@@ -94,42 +108,49 @@ employers:
 
   cppib:
     name: "CPP Investments"
+    group: ca
     tenant: "cppib"
     site_id: "cppinvestments"
     base_url: "https://cppib.wd10.myworkdayjobs.com"
 
   omers:
     name: "OMERS"
+    group: ca
     tenant: "omers"
     site_id: "OMERS_External"
     base_url: "https://omers.wd3.myworkdayjobs.com"
 
   otpp:
     name: "Ontario Teachers"
+    group: ca
     tenant: "otppb"
     site_id: "OntarioTeachers_Careers"
     base_url: "https://otppb.wd3.myworkdayjobs.com"
 
   psp:
     name: "PSP Investments"
+    group: ca
     tenant: "investpsp"
     site_id: "psp_careers"
     base_url: "https://investpsp.wd3.myworkdayjobs.com"
 
   cdpq:
     name: "CDPQ"
+    group: ca
     tenant: "cdpq"
     site_id: "CDPQ"
     base_url: "https://cdpq.wd10.myworkdayjobs.com"
 
   hoopp:
     name: "HOOPP"
+    group: ca
     tenant: "hoopp"
     site_id: "HOOPP"
     base_url: "https://hoopp.wd10.myworkdayjobs.com"
 
   aimco:
     name: "AIMCo"
+    group: ca
     tenant: "aimco"
     site_id: "AIMCoCareers"
     base_url: "https://aimco.wd10.myworkdayjobs.com"
@@ -138,90 +159,105 @@ employers:
 
   blackberry:
     name: "BlackBerry"
+    group: ca
     tenant: "bb"
     site_id: "BlackBerry"
     base_url: "https://bb.wd3.myworkdayjobs.com"
 
   ciena:
     name: "Ciena"
+    group: ca
     tenant: "ciena"
     site_id: "Careers"
     base_url: "https://ciena.wd5.myworkdayjobs.com"
 
   workday:
     name: "Workday"
+    group: multinational
     tenant: "workday"
     site_id: "Workday"
     base_url: "https://workday.wd5.myworkdayjobs.com"
 
   salesforce:
     name: "Salesforce"
+    group: multinational
     tenant: "salesforce"
     site_id: "External_Career_Site"
     base_url: "https://salesforce.wd12.myworkdayjobs.com"
 
   nvidia:
     name: "NVIDIA"
+    group: multinational
     tenant: "nvidia"
     site_id: "NVIDIAExternalCareerSite"
     base_url: "https://nvidia.wd5.myworkdayjobs.com"
 
   netflix:
     name: "Netflix"
+    group: multinational
     tenant: "netflix"
     site_id: "Netflix"
     base_url: "https://netflix.wd1.myworkdayjobs.com"
 
   cisco:
     name: "Cisco"
+    group: multinational
     tenant: "cisco"
     site_id: "Cisco_Careers"
     base_url: "https://cisco.wd5.myworkdayjobs.com"
 
   intel:
     name: "Intel"
+    group: multinational
     tenant: "intel"
     site_id: "External"
     base_url: "https://intel.wd1.myworkdayjobs.com"
 
   adobe:
     name: "Adobe"
+    group: multinational
     tenant: "adobe"
     site_id: "external_experienced"
     base_url: "https://adobe.wd5.myworkdayjobs.com"
 
   motorola:
     name: "Motorola Solutions"
+    group: multinational
     tenant: "motorolasolutions"
     site_id: "Careers"
     base_url: "https://motorolasolutions.wd5.myworkdayjobs.com"
 
   thomson_reuters:
     name: "Thomson Reuters"
+    group: multinational
     tenant: "thomsonreuters"
     site_id: "External_Career_Site"
     base_url: "https://thomsonreuters.wd5.myworkdayjobs.com"
 
   moderna:
     name: "Moderna"
+    group: multinational
     tenant: "modernatx"
     site_id: "M_tx"
     base_url: "https://modernatx.wd1.myworkdayjobs.com"
 
   servicenow:
     name: "ServiceNow"
+    group: multinational
     tenant: "servicenow"
     site_id: "ServiceNowCareers"
     base_url: "https://servicenow.wd1.myworkdayjobs.com"
 
   docusign:
     name: "DocuSign"
+    group: multinational
     tenant: "docusign"
     site_id: "External"
     base_url: "https://docusign.wd5.myworkdayjobs.com"
 
   uber:
     name: "Uber"
+    group: multinational
     tenant: "uber"
     site_id: "uberCareers"
     base_url: "https://uber.wd5.myworkdayjobs.com"
@@ -230,12 +266,14 @@ employers:
 
   pwc:
     name: "PwC"
+    group: multinational
     tenant: "pwc"
     site_id: "Global_Experienced_Careers"
     base_url: "https://pwc.wd3.myworkdayjobs.com"
 
   bdo:
     name: "BDO"
+    group: multinational
     tenant: "bdo"
     site_id: "BDO"
     base_url: "https://bdo.wd3.myworkdayjobs.com"
@@ -244,12 +282,14 @@ employers:
 
   telus:
     name: "TELUS International"
+    group: ca
     tenant: "telusinternational"
     site_id: "External"
     base_url: "https://telusinternational.wd3.myworkdayjobs.com"
 
   telus_health:
     name: "TELUS Health"
+    group: ca
     tenant: "lifeworks"
     site_id: "External"
     base_url: "https://lifeworks.wd3.myworkdayjobs.com"
@@ -258,48 +298,56 @@ employers:
 
   canadian_tire:
     name: "Canadian Tire"
+    group: ca
     tenant: "canadiantirecorporation"
     site_id: "Enterprise_External_Careers_Site"
     base_url: "https://canadiantirecorporation.wd3.myworkdayjobs.com"
 
   pc_financial:
     name: "PC Financial"
+    group: ca
     tenant: "myview"
     site_id: "pc_financial"
     base_url: "https://myview.wd3.myworkdayjobs.com"
 
   cae:
     name: "CAE"
+    group: ca
     tenant: "cae"
     site_id: "career"
     base_url: "https://cae.wd3.myworkdayjobs.com"
 
   magna:
     name: "Magna International"
+    group: ca
     tenant: "magna"
     site_id: "Magna"
     base_url: "https://magna.wd3.myworkdayjobs.com"
 
   mlse:
     name: "MLSE"
+    group: ca
     tenant: "mlse"
     site_id: "MLSE"
     base_url: "https://mlse.wd3.myworkdayjobs.com"
 
   olg:
     name: "OLG"
+    group: ca
     tenant: "olg"
     site_id: "Careers"
     base_url: "https://olg.wd3.myworkdayjobs.com"
 
   enbridge:
     name: "Enbridge"
+    group: ca
     tenant: "enbridge"
     site_id: "enbridge_careers"
     base_url: "https://enbridge.wd3.myworkdayjobs.com"
 
   canadian_solar:
     name: "Canadian Solar"
+    group: ca
     tenant: "canadiansolar"
     site_id: "CanadianSolar"
     base_url: "https://canadiansolar.wd5.myworkdayjobs.com"

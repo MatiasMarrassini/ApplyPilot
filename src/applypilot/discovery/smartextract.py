@@ -62,7 +62,7 @@ def _location_ok(location: str | None, accept: list[str], reject: list[str]) -> 
     if not location:
         return True
     loc = location.lower()
-    if any(r in loc for r in ("remote", "anywhere", "work from home", "wfh", "distributed")):
+    if any(r in loc for r in ("remote", "anywhere", "work from home", "wfh", "distributed", "remoto", "teletrabajo", "home office")):
         return True
     for r in reject:
         if r.lower() in loc:

@@ -60,42 +60,53 @@ _UPSTREAM: dict[str, str | None] = {
 # ---------------------------------------------------------------------------
 
 def _run_discover(workers: int = 1) -> dict:
-    """Stage: Job discovery — JobSpy, Workday, and smart-extract scrapers."""
-    stats: dict = {"jobspy": None, "workday": None, "smartextract": None}
+    """Stage: Job discovery — runs only the sources enabled in Setup > Portales."""
+    from applypilot import sources
+    from applypilot.config import load_search_config
 
-    # JobSpy
-    console.print("  [cyan]JobSpy full crawl...[/cyan]")
-    try:
+    cfg = load_search_config()
+    boards = sources.enabled_boards(cfg)
+    native = sources.enabled_native(cfg)
+    employers = sources.enabled_employers(cfg)
+    sites = sources.enabled_sites(cfg)
+    stats: dict = {"jobspy": None, "native": None, "workday": None, "smartextract": None}
+    console.print(f"  Sources: {len(boards)} job boards, {len(native)} built-in, "
+                  f"{len(employers)} Workday employers, {len(sites)} AI-read sites")
+
+    def step(name: str, label: str, enabled, run) -> None:
+        if not enabled:
+            console.print(f"  [dim]{label}: no sources enabled, skipped[/dim]")
+            stats[name] = "skipped"
+            return
+        console.print(f"  [cyan]{label}...[/cyan]")
+        try:
+            run()
+            stats[name] = "ok"
+        except Exception as e:
+            log.error("%s failed: %s", label, e)
+            console.print(f"  [red]{label} error:[/red] {e}")
+            stats[name] = f"error: {e}"
+
+    def jobspy() -> None:
         from applypilot.discovery.jobspy import run_discovery
-        run_discovery()
-        stats["jobspy"] = "ok"
-    except Exception as e:
-        log.error("JobSpy crawl failed: %s", e)
-        console.print(f"  [red]JobSpy error:[/red] {e}")
-        stats["jobspy"] = f"error: {e}"
+        run_discovery({**cfg, "sites": boards})
 
-    # Workday corporate scraper
-    console.print("  [cyan]Workday corporate scraper...[/cyan]")
-    try:
+    def built_in() -> None:
+        from applypilot.discovery.native import run_native_discovery
+        run_native_discovery(native, cfg)
+
+    def workday() -> None:
         from applypilot.discovery.workday import run_workday_discovery
-        run_workday_discovery(workers=workers)
-        stats["workday"] = "ok"
-    except Exception as e:
-        log.error("Workday scraper failed: %s", e)
-        console.print(f"  [red]Workday error:[/red] {e}")
-        stats["workday"] = f"error: {e}"
+        run_workday_discovery(employers=employers, workers=workers)
 
-    # Smart extract
-    console.print("  [cyan]Smart extract (AI-powered scraping)...[/cyan]")
-    try:
+    def smart() -> None:
         from applypilot.discovery.smartextract import run_smart_extract
-        run_smart_extract(workers=workers)
-        stats["smartextract"] = "ok"
-    except Exception as e:
-        log.error("Smart extract failed: %s", e)
-        console.print(f"  [red]Smart extract error:[/red] {e}")
-        stats["smartextract"] = f"error: {e}"
+        run_smart_extract(sites=sites, workers=workers)
 
+    step("jobspy", "JobSpy job boards", boards, jobspy)
+    step("native", "Built-in sources (GetOnBoard, EmpleosIT, Computrabajo)", native, built_in)
+    step("workday", "Workday employer portals", employers, workday)
+    step("smartextract", "Smart extract (AI-powered scraping)", sites, smart)
     return stats
 
 

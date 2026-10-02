@@ -36,7 +36,7 @@
     <div class="grid-fields">
       <label>
         Aceptar (una por línea)
-        <textarea name="accept" rows="4" placeholder="Ej.:&#10;Buenos Aires&#10;CABA">{{ v.accept }}</textarea>
+        <textarea name="accept" rows="4" placeholder="Ej.:&#10;Buenos Aires&#10;CABA&#10;Capital Federal&#10;GBA">{{ v.accept }}</textarea>
       </label>
       <label>
         Rechazar (una por línea)
@@ -47,17 +47,8 @@
   </fieldset>
 
   <fieldset>
-    <legend><strong>Portales</strong></legend>
-    <div class="boards">
-      {% for key, label in boards %}
-      <label class="inline"><input type="checkbox" name="sites" value="{{ key }}" {% if key in v.sites %}checked{% endif %}> {{ label }}</label>
-      {% endfor %}
-    </div>
-    {% if errors.sites %}<small class="field-error">{{ errors.sites }}</small>{% endif %}
-    <p class="muted"><small>ZipRecruiter solo tiene ofertas de EE.UU. y Canadá: desde otros países responde con error 403.
-      Glassdoor a veces no reconoce ciudades fuera de EE.UU. (en el log aparece "location not parsed").</small></p>
-    <p class="muted"><small>Además de estos portales, ApplyPilot siempre revisa los portales Workday y los sitios de empleo directos que trae configurados
-      (en su mayoría empresas de EE.UU. y Canadá).</small></p>
+    <legend><strong>Cantidad y antigüedad</strong></legend>
+    <p class="muted"><small>Qué portales se usan se elige en <a href="/setup/portals">Portales</a>.</small></p>
     <div class="grid-fields three">
       <label>
         Resultados por portal

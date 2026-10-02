@@ -77,3 +77,28 @@
   document.addEventListener("htmx:afterSettle", stick);
   window.addEventListener("load", stick);
 })();
+
+// ---- Setup > Portales: a country checkbox toggles all its portals ----------
+(function () {
+  function sync(group) {
+    const srcs = [...group.querySelectorAll(".src")];
+    const on = srcs.filter((s) => s.checked).length;
+    const toggle = group.querySelector(".group-toggle");
+    toggle.checked = on === srcs.length;
+    toggle.indeterminate = on > 0 && on < srcs.length;
+    const count = group.querySelector("[data-count]");
+    if (count) count.textContent = on;
+  }
+  const syncAll = () => document.querySelectorAll(".pgroup").forEach(sync);
+
+  document.addEventListener("change", (e) => {
+    const group = e.target.closest(".pgroup");
+    if (!group) return;
+    if (e.target.matches(".group-toggle")) {
+      group.querySelectorAll(".src").forEach((s) => (s.checked = e.target.checked));
+    }
+    sync(group);
+  });
+  document.addEventListener("DOMContentLoaded", syncAll);
+  document.addEventListener("htmx:afterSettle", syncAll);
+})();

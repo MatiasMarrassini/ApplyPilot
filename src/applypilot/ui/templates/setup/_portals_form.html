@@ -1,0 +1,51 @@
+{% from "setup/_macros.html" import save_bar %}
+{% macro portal(item, compact=false) %}
+<label class="portal {{ 'compact' if compact }}">
+  <input type="checkbox" class="src" name="src" value="{{ item.src.key }}" {% if item.on %}checked{% endif %}>
+  <span class="portal-name">{{ item.src.name }}</span>
+  {% if not compact %}
+  <span class="portal-note">
+    {{ item.src.note }}
+    {% if item.src.key == "board:indeed" %}País actual: <strong>{{ country_indeed or "usa (por defecto)" }}</strong>.{% endif %}
+  </span>
+  <span class="tag {{ 'tag-ai' if item.src.uses_ai }}">{{ "Usa IA" if item.src.uses_ai else "Sin IA" }}</span>
+  {% endif %}
+</label>
+{% endmacro %}
+
+<form id="portals-form" hx-post="/setup/portals" hx-target="this" hx-swap="outerHTML" class="portals">
+  {% if not exists %}
+  <article class="notice notice-warn"><strong>Primero configurá tus búsquedas.</strong>
+    Los portales se guardan junto con ellas. <a href="/setup/searches">Ir a Búsquedas</a></article>
+  {% endif %}
+
+  {% for g in groups %}
+  <section class="pgroup" data-group="{{ g.key }}">
+    <header class="pgroup-head">
+      <label class="pgroup-toggle">
+        <input type="checkbox" class="group-toggle" aria-label="Activar o desactivar todo {{ g.title }}">
+        <strong>{{ g.title }}</strong>
+      </label>
+      <span class="pgroup-count"><span data-count>{{ g.on }}</span> de {{ g.total }} activos</span>
+    </header>
+    <p class="pgroup-desc">{{ g.desc }}</p>
+    {% if g.portals %}
+    <div class="portal-list">
+      {% for item in g.portals %}{{ portal(item) }}{% endfor %}
+    </div>
+    {% endif %}
+    {% if g.employers %}
+    <details class="employers">
+      <summary>Portales propios de empresas (Workday), sin IA:
+        <span class="muted">{{ g.employers | selectattr("on") | list | length }} de {{ g.employers | length }} activos</span></summary>
+      <div class="employer-grid">
+        {% for item in g.employers %}{{ portal(item, compact=true) }}{% endfor %}
+      </div>
+    </details>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+  {% if errors.portals %}<p class="field-error" role="alert">{{ errors.portals }}</p>{% endif %}
+  {{ save_bar(saved, errors, "Guardar portales") }}
+</form>

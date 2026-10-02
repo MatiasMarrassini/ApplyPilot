@@ -286,15 +286,6 @@ def save_resume_pdf(data: bytes) -> None:
 # Searches
 # ---------------------------------------------------------------------------
 
-BOARDS = [
-    ("indeed", "Indeed"),
-    ("linkedin", "LinkedIn"),
-    ("glassdoor", "Glassdoor"),
-    ("zip_recruiter", "ZipRecruiter"),
-    ("google", "Google Jobs"),
-]
-# Discovery's default when `sites` is missing (discovery/jobspy.py::_full_crawl)
-DEFAULT_BOARDS = ["indeed", "linkedin", "zip_recruiter"]
 LOCATION_ROWS_MIN = 3
 
 
@@ -317,7 +308,6 @@ def searches_form_values(cfg: dict) -> dict:
         # Older configs keep the list under location.accept_patterns
         "accept": "\n".join(cfg.get("location_accept") or (cfg.get("location") or {}).get("accept_patterns") or []),
         "reject": "\n".join(cfg.get("location_reject_non_remote") or []),
-        "sites": cfg.get("sites") or DEFAULT_BOARDS,
         "results_per_site": defaults.get("results_per_site", 50),
         "hours_old": defaults.get("hours_old", 72),
         "country_indeed": defaults.get("country_indeed", ""),
@@ -350,14 +340,9 @@ def save_searches(form) -> tuple[dict, dict[str, str]]:
     if not locations:
         errors["locations"] = "Agregá al menos una ubicación"
 
-    sites = [s for s, _ in BOARDS if s in form.getlist("sites")]
-    if not sites:
-        errors["sites"] = "Elegí al menos un portal"
-
     accept = _split_lines(form.get("accept") or "")
     cfg["queries"] = queries
     cfg["locations"] = locations
-    cfg["sites"] = sites
     # Discovery reads location_accept / location_reject_non_remote; the apply
     # prompt reads location.accept_patterns. Keep both in sync.
     cfg["location_accept"] = accept
@@ -378,12 +363,58 @@ def save_searches(form) -> tuple[dict, dict[str, str]]:
     cfg.pop("boards", None)  # never read by discovery; `sites` is the real key
 
     if not errors:
-        config.SEARCH_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        header = "# ApplyPilot search configuration (edited from the web UI)\n"
-        config.SEARCH_CONFIG_PATH.write_text(
-            header + yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True), encoding="utf-8"
-        )
+        _write_searches(cfg)
     return cfg, errors
+
+
+def _write_searches(cfg: dict) -> None:
+    config.SEARCH_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    header = "# ApplyPilot search configuration (edited from the web UI)\n"
+    config.SEARCH_CONFIG_PATH.write_text(
+        header + yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True), encoding="utf-8"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Portals (job sources)
+# ---------------------------------------------------------------------------
+
+
+def portals_view(cfg: dict) -> list[dict]:
+    """Sources grouped by region, each with its on/off state, for the Portales page."""
+    from applypilot import sources
+
+    by_group: dict[str, list] = {}
+    for src in sources.all_sources():
+        by_group.setdefault(src.group, []).append({"src": src, "on": sources.is_enabled(src, cfg)})
+    groups = []
+    for key, title, desc in sources.GROUPS:
+        items = by_group.get(key, [])
+        if not items:
+            continue
+        groups.append({
+            "key": key, "title": title, "desc": desc,
+            "portals": [i for i in items if i["src"].kind != "workday"],
+            "employers": [i for i in items if i["src"].kind == "workday"],
+            "on": sum(i["on"] for i in items), "total": len(items),
+        })
+    return groups
+
+
+def save_portals(form) -> tuple[dict, dict[str, str]]:
+    from applypilot import sources
+
+    cfg, exists = load_searches()
+    if not exists:
+        return cfg, {"portals": "Configurá primero tus búsquedas."}
+    known = {s.key for s in sources.all_sources()}
+    enabled = {k for k in form.getlist("src") if k in known}
+    if not enabled:
+        return cfg, {"portals": "Activá al menos un portal."}
+    cfg.pop("boards", None)
+    sources.apply_choices(cfg, enabled)
+    _write_searches(cfg)
+    return cfg, {}
 
 
 # ---------------------------------------------------------------------------
