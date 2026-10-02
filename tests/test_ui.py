@@ -98,3 +98,13 @@ def test_detail_shows_documents_and_blocks_js_urls(client, db):
     assert 'href="javascript:' not in r.text
     assert client.get(f"/jobs/{job_id}/cv.pdf").status_code == 404
     assert client.get("/jobs/99999").status_code == 404
+
+
+def test_static_assets_are_versioned(client):
+    import re
+
+    html = client.get("/jobs").text
+    for asset in ("app.css", "app.js", "vendor/htmx.min.js"):
+        m = re.search(rf'/static/{re.escape(asset)}\?v=(\d+)', html)
+        assert m and int(m.group(1)) > 0, asset
+    assert client.get("/static/app.css?v=123").status_code == 200

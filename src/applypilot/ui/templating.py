@@ -82,6 +82,20 @@ def sidebar_state() -> dict:
     }
 
 
+def static_url(path: str) -> str:
+    """URL for a file in ui/static with a version that changes when the file does.
+
+    Without it the browser can keep using an old app.css/app.js after an update,
+    while the HTML is already new.
+    """
+    try:
+        version = int((UI_DIR / "static" / path).stat().st_mtime)
+    except OSError:
+        version = 0
+    return f"/static/{path}?v={version}"
+
+
+templates.env.globals["static_url"] = static_url
 templates.env.filters["ago"] = ago
 templates.env.filters["clock"] = clock
 templates.env.filters["band"] = score_band
