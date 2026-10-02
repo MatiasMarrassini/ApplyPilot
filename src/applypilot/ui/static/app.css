@@ -349,15 +349,25 @@ pre.log { max-height: 55vh; overflow: auto; font-size: 12px; line-height: 1.55; 
 
 /* ---------- setup > portales ---------- */
 .portals { max-width: 860px; }
-.pgroup { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 16px; }
+.pgroups-bar { display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 8px; }
+.pgroup { border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 10px; }
 .pgroup:has(.group-toggle:not(:checked):not(:indeterminate)) { background: var(--bg-subtle); }
-.pgroup:has(.group-toggle:not(:checked):not(:indeterminate)) .pgroup-head strong { color: var(--fg-muted); }
-.pgroup-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.pgroup-toggle { display: inline-flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; cursor: pointer; }
-.pgroup-toggle strong { font-weight: 600; }
+.pgroup:has(.group-toggle:not(:checked):not(:indeterminate)) .pgroup-title { color: var(--fg-muted); }
+.pgroup-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.pgroup-expand { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; height: auto; padding: 2px 0;
+  background: transparent; border: 0; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.pgroup-expand:hover { opacity: 1; }
+.pgroup-expand:hover .pgroup-title { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--border-strong); }
+.pgroup-title { font-size: 15px; font-weight: 600; white-space: nowrap; }
+.pgroup-active { flex: 1; min-width: 0; font-size: 13px; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pgroup:not(.is-collapsed) .pgroup-active { visibility: hidden; }
 .pgroup-count { font-size: 13px; color: var(--fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pgroup-desc { margin: 4px 0 12px 26px; font-size: 13px; color: var(--fg-muted); }
-.portal-list { display: grid; margin-left: 26px; border-top: 1px solid var(--border); }
+.chevron { flex: none; width: 8px; height: 8px; margin: 0 4px; border-right: 1.5px solid var(--fg-muted);
+  border-bottom: 1.5px solid var(--fg-muted); transform: rotate(45deg); transition: transform .15s; }
+.pgroup.is-collapsed .chevron { transform: rotate(-45deg); }
+.pgroup-body { padding: 0 16px 12px 44px; }
+.pgroup-desc { margin: 0 0 10px; font-size: 13px; color: var(--fg-muted); }
+.portal-list { display: grid; border-top: 1px solid var(--border); }
 .portal { display: grid; grid-template-columns: 16px 150px minmax(0, 1fr) auto; align-items: center; gap: 12px;
   margin: 0; padding: 9px 0; border-bottom: 1px solid var(--border); font-weight: 400; font-size: 14px; cursor: pointer; }
 .portal:last-child { border-bottom: 0; }
@@ -368,11 +378,12 @@ pre.log { max-height: 55vh; overflow: auto; font-size: 12px; line-height: 1.55; 
 .tag.tag-ai { color: var(--mid); background: var(--mid-bg); }
 .portal.compact { display: inline-flex; grid-template-columns: none; gap: 8px; padding: 4px 0; border: 0; font-size: 13px; }
 .portal.compact .portal-name { font-weight: 400; }
-details.employers { margin: 8px 0 0 26px; border: 0; }
+details.employers { margin: 8px 0 0; border: 0; }
 details.employers summary { padding: 8px 0; font-size: 13px; }
 .employer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0 16px; padding: 4px 0 8px 17px; }
 @media (max-width: 900px) {
   .portal { grid-template-columns: 16px minmax(0, 1fr) auto; }
   .portal-note { grid-column: 2 / -1; }
-  .portal-list, .pgroup-desc, details.employers { margin-left: 0; }
+  .pgroup-body { padding-left: 16px; }
+  .pgroup-active { display: none; }
 }

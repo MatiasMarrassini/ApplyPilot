@@ -78,18 +78,48 @@
   window.addEventListener("load", stick);
 })();
 
-// ---- Setup > Portales: a country checkbox toggles all its portals ----------
+// ---- Setup > Portales: country checkbox toggles all its portals; groups collapse ----
 (function () {
+  const STORE = "applypilot.portals.open";
+  const openGroups = () => {
+    try { return new Set(JSON.parse(localStorage.getItem(STORE) || "[]")); } catch { return new Set(); }
+  };
+  const saveOpen = (set) => {
+    try { localStorage.setItem(STORE, JSON.stringify([...set])); } catch { /* storage unavailable: just don't remember */ }
+  };
+
   function sync(group) {
     const srcs = [...group.querySelectorAll(".src")];
-    const on = srcs.filter((s) => s.checked).length;
+    const active = srcs.filter((s) => s.checked);
     const toggle = group.querySelector(".group-toggle");
-    toggle.checked = on === srcs.length;
-    toggle.indeterminate = on > 0 && on < srcs.length;
-    const count = group.querySelector("[data-count]");
-    if (count) count.textContent = on;
+    toggle.checked = active.length === srcs.length;
+    toggle.indeterminate = active.length > 0 && active.length < srcs.length;
+    group.querySelector("[data-count]").textContent = active.length;
+    // Collapsed headers name the first active portals so the overview needs no scrolling.
+    const names = active.map((s) => s.dataset.name);
+    const shown = names.slice(0, 3).join(", ");
+    group.querySelector("[data-active-names]").textContent =
+      names.length === 0 ? "Ninguno activo" : names.length > 3 ? `${shown} y ${names.length - 3} más` : shown;
   }
-  const syncAll = () => document.querySelectorAll(".pgroup").forEach(sync);
+
+  function setOpen(group, open, remember = true) {
+    group.classList.toggle("is-collapsed", !open);
+    group.querySelector(".pgroup-body").hidden = !open;
+    group.querySelector(".pgroup-expand").setAttribute("aria-expanded", String(open));
+    if (remember) {
+      const set = openGroups();
+      open ? set.add(group.dataset.group) : set.delete(group.dataset.group);
+      saveOpen(set);
+    }
+  }
+
+  function init() {
+    const open = openGroups();
+    document.querySelectorAll(".pgroup").forEach((g) => {
+      sync(g);
+      setOpen(g, open.has(g.dataset.group), false);
+    });
+  }
 
   document.addEventListener("change", (e) => {
     const group = e.target.closest(".pgroup");
@@ -99,6 +129,16 @@
     }
     sync(group);
   });
-  document.addEventListener("DOMContentLoaded", syncAll);
-  document.addEventListener("htmx:afterSettle", syncAll);
+  document.addEventListener("click", (e) => {
+    const expand = e.target.closest(".pgroup-expand");
+    if (expand) {
+      const group = expand.closest(".pgroup");
+      setOpen(group, group.classList.contains("is-collapsed"));
+    } else if (e.target.closest("[data-expand-all], [data-collapse-all]")) {
+      const open = !!e.target.closest("[data-expand-all]");
+      document.querySelectorAll(".pgroup").forEach((g) => setOpen(g, open));
+    }
+  });
+  document.addEventListener("DOMContentLoaded", init);
+  document.addEventListener("htmx:afterSettle", init);
 })();

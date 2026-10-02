@@ -1,7 +1,7 @@
 {% from "setup/_macros.html" import save_bar %}
 {% macro portal(item, compact=false) %}
 <label class="portal {{ 'compact' if compact }}">
-  <input type="checkbox" class="src" name="src" value="{{ item.src.key }}" {% if item.on %}checked{% endif %}>
+  <input type="checkbox" class="src" name="src" value="{{ item.src.key }}" data-name="{{ item.src.name }}" {% if item.on %}checked{% endif %}>
   <span class="portal-name">{{ item.src.name }}</span>
   {% if not compact %}
   <span class="portal-note">
@@ -19,30 +19,39 @@
     Los portales se guardan junto con ellas. <a href="/setup/searches">Ir a Búsquedas</a></article>
   {% endif %}
 
+  <div class="pgroups-bar">
+    <button type="button" class="ghost small" data-expand-all>Expandir todo</button>
+    <button type="button" class="ghost small" data-collapse-all>Contraer todo</button>
+  </div>
+
   {% for g in groups %}
-  <section class="pgroup" data-group="{{ g.key }}">
+  <section class="pgroup is-collapsed" data-group="{{ g.key }}">
     <header class="pgroup-head">
-      <label class="pgroup-toggle">
-        <input type="checkbox" class="group-toggle" aria-label="Activar o desactivar todo {{ g.title }}">
-        <strong>{{ g.title }}</strong>
-      </label>
-      <span class="pgroup-count"><span data-count>{{ g.on }}</span> de {{ g.total }} activos</span>
+      <input type="checkbox" class="group-toggle" aria-label="Activar o desactivar todo {{ g.title }}">
+      <button type="button" class="pgroup-expand" aria-expanded="false" aria-controls="pgroup-body-{{ g.key }}">
+        <span class="pgroup-title">{{ g.title }}</span>
+        <span class="pgroup-active" data-active-names></span>
+        <span class="pgroup-count"><span data-count>{{ g.on }}</span> de {{ g.total }} activos</span>
+        <span class="chevron" aria-hidden="true"></span>
+      </button>
     </header>
-    <p class="pgroup-desc">{{ g.desc }}</p>
-    {% if g.portals %}
-    <div class="portal-list">
-      {% for item in g.portals %}{{ portal(item) }}{% endfor %}
-    </div>
-    {% endif %}
-    {% if g.employers %}
-    <details class="employers">
-      <summary>Portales propios de empresas (Workday), sin IA:
-        <span class="muted">{{ g.employers | selectattr("on") | list | length }} de {{ g.employers | length }} activos</span></summary>
-      <div class="employer-grid">
-        {% for item in g.employers %}{{ portal(item, compact=true) }}{% endfor %}
+    <div class="pgroup-body" id="pgroup-body-{{ g.key }}" hidden>
+      <p class="pgroup-desc">{{ g.desc }}</p>
+      {% if g.portals %}
+      <div class="portal-list">
+        {% for item in g.portals %}{{ portal(item) }}{% endfor %}
       </div>
-    </details>
-    {% endif %}
+      {% endif %}
+      {% if g.employers %}
+      <details class="employers">
+        <summary>Portales propios de empresas (Workday), sin IA:
+          <span class="muted">{{ g.employers | selectattr("on") | list | length }} de {{ g.employers | length }} activos</span></summary>
+        <div class="employer-grid">
+          {% for item in g.employers %}{{ portal(item, compact=true) }}{% endfor %}
+        </div>
+      </details>
+      {% endif %}
+    </div>
   </section>
   {% endfor %}
 
