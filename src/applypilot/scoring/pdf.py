@@ -7,6 +7,7 @@ and exports to PDF using headless Chromium via Playwright.
 import logging
 from pathlib import Path
 
+from applypilot.languages import CANONICAL_SECTIONS, PDF_LABELS, SECTION_TITLES
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ def parse_resume(text: str) -> dict:
     header_lines: list[str] = []
     body_start = 0
     for i, line in enumerate(lines):
-        if line.strip().upper() == "SUMMARY":
+        if CANONICAL_SECTIONS.get(line.strip().upper()) == "SUMMARY":
             body_start = i
             break
         if line.strip():
@@ -77,12 +78,18 @@ def parse_resume(text: str) -> dict:
     if current_section:
         sections[current_section] = "\n".join(current_lines).strip()
 
+    # Map localized titles (EXPERIENCIA, ...) to the canonical keys the builder uses.
+    spanish_only = set(SECTION_TITLES["es"].values()) - set(SECTION_TITLES["en"].values())
+    lang = "es" if spanish_only & sections.keys() else "en"
+    sections = {CANONICAL_SECTIONS.get(k, k): v for k, v in sections.items()}
+
     return {
         "name": name,
         "title": title,
         "location": location,
         "contact": contact,
         "sections": sections,
+        "lang": lang,
     }
 
 
@@ -157,6 +164,7 @@ def build_html(resume: dict) -> str:
         Complete HTML string ready for PDF rendering.
     """
     sections = resume["sections"]
+    labels = PDF_LABELS.get(resume.get("lang", "en"), PDF_LABELS["en"])
 
     # Skills
     skills_html = ""
@@ -165,7 +173,7 @@ def build_html(resume: dict) -> str:
         rows = ""
         for cat, val in skills:
             rows += f'<div class="skill-row"><span class="skill-cat">{cat}:</span> {val}</div>\n'
-        skills_html = f'<div class="section"><div class="section-title">Technical Skills</div>{rows}</div>'
+        skills_html = f'<div class="section"><div class="section-title">{labels["TECHNICAL SKILLS"]}</div>{rows}</div>'
 
     # Experience
     exp_html = ""
@@ -176,7 +184,7 @@ def build_html(resume: dict) -> str:
             bullets = "".join(f"<li>{b}</li>" for b in e["bullets"])
             subtitle = f'<div class="entry-subtitle">{e["subtitle"]}</div>' if e["subtitle"] else ""
             items += f'<div class="entry"><div class="entry-title">{e["title"]}</div>{subtitle}<ul>{bullets}</ul></div>'
-        exp_html = f'<div class="section"><div class="section-title">Experience</div>{items}</div>'
+        exp_html = f'<div class="section"><div class="section-title">{labels["EXPERIENCE"]}</div>{items}</div>'
 
     # Projects
     proj_html = ""
@@ -187,18 +195,18 @@ def build_html(resume: dict) -> str:
             bullets = "".join(f"<li>{b}</li>" for b in e["bullets"])
             subtitle = f'<div class="entry-subtitle">{e["subtitle"]}</div>' if e["subtitle"] else ""
             items += f'<div class="entry"><div class="entry-title">{e["title"]}</div>{subtitle}<ul>{bullets}</ul></div>'
-        proj_html = f'<div class="section"><div class="section-title">Projects</div>{items}</div>'
+        proj_html = f'<div class="section"><div class="section-title">{labels["PROJECTS"]}</div>{items}</div>'
 
     # Education
     edu_html = ""
     if "EDUCATION" in sections:
         edu_text = sections["EDUCATION"].strip()
-        edu_html = f'<div class="section"><div class="section-title">Education</div><div class="edu">{edu_text}</div></div>'
+        edu_html = f'<div class="section"><div class="section-title">{labels["EDUCATION"]}</div><div class="edu">{edu_text}</div></div>'
 
     # Summary
     summary_html = ""
     if "SUMMARY" in sections:
-        summary_html = f'<div class="section"><div class="section-title">Summary</div><div class="summary">{sections["SUMMARY"].strip()}</div></div>'
+        summary_html = f'<div class="section"><div class="section-title">{labels["SUMMARY"]}</div><div class="summary">{sections["SUMMARY"].strip()}</div></div>'
 
     # Contact line parsing
     contact = resume["contact"]

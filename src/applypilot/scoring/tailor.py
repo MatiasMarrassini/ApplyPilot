@@ -17,6 +17,7 @@ from pathlib import Path
 
 from applypilot.applications import JOB_FILE, RESUME_FILE, TAILOR_REPORT_FILE, application_dir, company_for_prompt
 from applypilot.config import RESUME_PATH, load_profile
+from applypilot.languages import LANGUAGE_NAMES, SECTION_TITLES, SKILL_CATEGORIES, document_language
 from applypilot.database import get_connection, get_jobs_by_stage
 from applypilot.llm import get_client
 from applypilot.scoring.validator import (
@@ -34,7 +35,7 @@ MAX_ATTEMPTS = 5  # max cross-run retries before giving up
 
 # ── Prompt Builders (profile-driven) ──────────────────────────────────────
 
-def _build_tailor_prompt(profile: dict) -> str:
+def _build_tailor_prompt(profile: dict, lang: str = "en") -> str:
     """Build the resume tailoring system prompt from the user's profile.
 
     All skills boundaries, preserved entities, and formatting rules are
@@ -68,6 +69,14 @@ def _build_tailor_prompt(profile: dict) -> str:
     education = profile.get("experience", {})
     education_level = education.get("education_level", "")
 
+    language = LANGUAGE_NAMES[lang]
+    skills_example = ",".join(f'"{c}":"..."' for c in SKILL_CATEGORIES[lang])
+    # The model copies the example literally, so it must read like real content in the right language.
+    exp_header, exp_subtitle, proj_header = {
+        "en": ("Backend Developer at Company", "Python, PostgreSQL | Jan 2023 - Present", "Project Name - What it does"),
+        "es": ("Desarrollador Backend en Empresa", "Python, PostgreSQL | Ene 2023 - Presente", "Nombre del proyecto - Qué hace"),
+    }[lang]
+
     return f"""You are a senior technical recruiter rewriting a resume to get this person an interview.
 
 Take the base resume and job description. Return a tailored resume as a JSON object.
@@ -77,6 +86,12 @@ Take the base resume and job description. Return a tailored resume as a JSON obj
 2. Summary -- 2 sentences proving you've done this work
 3. First 3 bullets of most recent role -- verbs and outcomes match?
 4. Skills -- must-haves visible immediately?
+
+## LANGUAGE: {language}
+Write every text value (title, summary, skill category names, bullets, project descriptions, education) in {language}, matching the job posting.
+Keep company names, product names, project names, school names and technology names exactly as they are. Keep the JSON keys in English.
+Each experience "header" is the real role title plus the company (e.g. "{exp_header}"). Its "subtitle" holds the real technologies and dates from the base resume, never a placeholder like "Tech".
+Translating the base resume's content is expected and is NOT fabrication.
 
 ## SKILLS BOUNDARY (real skills only):
 {skills_block}
@@ -114,7 +129,7 @@ BULLETS: Strong verb + what you built + quantified impact. Vary verbs (Built, De
 
 ## OUTPUT: Return ONLY valid JSON. No markdown fences. No commentary. No "here is" preamble.
 
-{{"title":"Role Title","summary":"2-3 tailored sentences.","skills":{{"Languages":"...","Frameworks":"...","DevOps & Infra":"...","Databases":"...","Tools":"..."}},"experience":[{{"header":"Title at Company","subtitle":"Tech | Dates","bullets":["bullet 1","bullet 2","bullet 3","bullet 4"]}}],"projects":[{{"header":"Project Name - Description","subtitle":"Tech | Dates","bullets":["bullet 1","bullet 2"]}}],"education":"{school} | {education_level}"}}"""
+{{"title":"Role Title","summary":"2-3 tailored sentences.","skills":{{{skills_example}}},"experience":[{{"header":"{exp_header}","subtitle":"{exp_subtitle}","bullets":["bullet 1","bullet 2","bullet 3","bullet 4"]}}],"projects":[{{"header":"{proj_header}","subtitle":"{exp_subtitle}","bullets":["bullet 1","bullet 2"]}}],"education":"{school} | {education_level}"}}"""
 
 
 def _build_judge_prompt(profile: dict) -> str:
@@ -146,6 +161,7 @@ ISSUES: (list any problems, or "none")
 - Drop low-relevance bullets and replace with more relevant ones from other sections
 - Reorder the skills section to put job-relevant skills first
 - Change tone and wording extensively
+- Translate the resume into the job posting's language (for example Spanish); a faithful translation is never fabrication
 
 ## WHAT IS FABRICATION (FAIL for these):
 1. Adding tools, languages, or frameworks to TECHNICAL SKILLS that aren't in the original. The allowed skills are ONLY: {skills_str}
@@ -220,7 +236,7 @@ def extract_json(raw: str) -> dict:
 
 # ── Resume Assembly (profile-driven header) ──────────────────────────────
 
-def assemble_resume_text(data: dict, profile: dict) -> str:
+def assemble_resume_text(data: dict, profile: dict, lang: str = "en") -> str:
     """Convert JSON resume data to formatted plain text.
 
     Header (name, location, contact) is ALWAYS code-injected from the profile,
@@ -229,11 +245,13 @@ def assemble_resume_text(data: dict, profile: dict) -> str:
     Args:
         data: Parsed JSON resume from the LLM.
         profile: User profile dict from load_profile().
+        lang: Language of the section titles ("en" or "es").
 
     Returns:
         Formatted resume text.
     """
     personal = profile.get("personal", {})
+    titles = SECTION_TITLES[lang]
     lines: list[str] = []
 
     # Header -- always code-injected from profile
@@ -259,19 +277,19 @@ def assemble_resume_text(data: dict, profile: dict) -> str:
     lines.append("")
 
     # Summary
-    lines.append("SUMMARY")
+    lines.append(titles["SUMMARY"])
     lines.append(sanitize_text(data["summary"]))
     lines.append("")
 
     # Technical Skills
-    lines.append("TECHNICAL SKILLS")
+    lines.append(titles["TECHNICAL SKILLS"])
     if isinstance(data["skills"], dict):
         for cat, val in data["skills"].items():
             lines.append(f"{cat}: {sanitize_text(str(val))}")
     lines.append("")
 
     # Experience
-    lines.append("EXPERIENCE")
+    lines.append(titles["EXPERIENCE"])
     for entry in data.get("experience", []):
         lines.append(sanitize_text(entry.get("header", "")))
         if entry.get("subtitle"):
@@ -281,7 +299,7 @@ def assemble_resume_text(data: dict, profile: dict) -> str:
         lines.append("")
 
     # Projects
-    lines.append("PROJECTS")
+    lines.append(titles["PROJECTS"])
     for entry in data.get("projects", []):
         lines.append(sanitize_text(entry.get("header", "")))
         if entry.get("subtitle"):
@@ -291,7 +309,7 @@ def assemble_resume_text(data: dict, profile: dict) -> str:
         lines.append("")
 
     # Education
-    lines.append("EDUCATION")
+    lines.append(titles["EDUCATION"])
     lines.append(sanitize_text(str(data.get("education", ""))))
 
     return "\n".join(lines)
@@ -383,7 +401,9 @@ def tailor_resume(
     avoid_notes: list[str] = []
     tailored = ""
     client = get_client()
-    tailor_prompt_base = _build_tailor_prompt(profile)
+    lang = document_language(job, profile)
+    report["language"] = lang
+    tailor_prompt_base = _build_tailor_prompt(profile, lang)
 
     for attempt in range(max_retries + 1):
         report["attempts"] = attempt + 1
@@ -419,12 +439,12 @@ def tailor_resume(
             if attempt < max_retries:
                 continue
             # Last attempt — assemble whatever we got
-            tailored = assemble_resume_text(data, profile)
+            tailored = assemble_resume_text(data, profile, lang)
             report["status"] = "failed_validation"
             return tailored, report
 
         # Assemble text (header injected by code, em dashes auto-fixed)
-        tailored = assemble_resume_text(data, profile)
+        tailored = assemble_resume_text(data, profile, lang)
 
         # Layer 2: LLM judge (catches subtle fabrication) — skipped in lenient mode
         if validation_mode == "lenient":

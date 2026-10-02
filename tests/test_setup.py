@@ -193,3 +193,12 @@ def test_connection_test_reports_busy_provider_as_valid_config(client, monkeypat
     r = client.post("/setup/keys/test", data={"provider": "gemini", "GEMINI_API_KEY": "k",
                                               "LLM_MODEL": "gemini-3.1-flash-lite"}, headers=HX)
     assert "son válidos" in r.text and "No funcionó" not in r.text
+
+
+def test_document_language_preference(client):
+    page = client.get("/setup/profile").text
+    assert "Idioma del CV y la carta" in page and "Otro (escribir)</option>" in page  # EEO still has "Otro"
+    client.post("/setup/profile", data={**PROFILE_FORM, "preferences.document_language": "es"}, headers=HX)
+    assert json.loads(config.PROFILE_PATH.read_text(encoding="utf-8"))["preferences"]["document_language"] == "es"
+    client.post("/setup/profile", data={**PROFILE_FORM, "preferences.document_language": "klingon"}, headers=HX)
+    assert json.loads(config.PROFILE_PATH.read_text(encoding="utf-8"))["preferences"]["document_language"] == "auto"

@@ -17,6 +17,10 @@
     <input type="text" class="other-input" name="{{ name }}.other" aria-label="{{ label }}: otro"
            value="{{ other or (value if is_other and value != '__other__' else '') }}" placeholder="Escribí tu respuesta">
   </span>
+  {% elif kind == "select" %}
+  <select name="{{ name }}">
+    {% for opt, opt_label in options %}<option value="{{ opt }}" {% if value == opt %}selected{% endif %}>{{ opt_label }}</option>{% endfor %}
+  </select>
   {% elif kind == "yesno" %}
   <select name="{{ name }}">
     <option value="" {% if not value %}selected{% endif %}>—</option>

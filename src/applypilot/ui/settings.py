@@ -30,7 +30,7 @@ OTHER = "__other__"
 class Field:
     key: str
     label: str
-    kind: str = "text"  # text | email | url | password | yesno | lines | number | choice
+    kind: str = "text"  # text | email | url | password | yesno | lines | number | choice | select
     required: bool = False
     hint: str = ""
     placeholder: str = ""
@@ -92,10 +92,18 @@ PROFILE_SECTIONS: list[Section] = [
     ]),
     Section("resume_facts", "Datos que la IA nunca debe cambiar",
             "Al personalizar tu CV, la IA reorganiza pero conserva exactamente estos datos. Uno por línea.", [
-        Field("preserved_companies", "Empresas", "lines"),
-        Field("preserved_projects", "Proyectos", "lines"),
+        Field("preserved_companies", "Empresas", "lines",
+              hint="Una por línea. \"Acme, Globex\" en la misma línea cuenta como una sola empresa."),
+        Field("preserved_projects", "Proyectos", "lines", hint="Uno por línea."),
         Field("preserved_school", "Institución educativa"),
         Field("real_metrics", "Métricas reales", "lines", placeholder="Reduje la latencia un 40%"),
+    ]),
+    Section("preferences", "Documentos", "Cómo se escriben tu CV personalizado y tu carta.", [
+        Field("document_language", "Idioma del CV y la carta", "select", options=[
+            ("auto", "Según el idioma de cada oferta (recomendado)"),
+            ("es", "Siempre en castellano"),
+            ("en", "Siempre en inglés"),
+        ]),
     ]),
     Section("eeo_voluntary", "Datos demográficos voluntarios (EEO)",
             "Preguntas opcionales de formularios en EE.UU. Podés dejar las respuestas por defecto.", [
@@ -173,6 +181,8 @@ def profile_form_values(profile: dict) -> dict[str, str]:
                 v = ""  # never echo secrets back to the browser
             elif f.kind == "choice":
                 v = normalize_choice(f, v) or (EEO_DEFAULT if section.key == "eeo_voluntary" else "")
+            elif f.kind == "select":
+                v = v if v in {o for o, _ in f.options} else f.options[0][0]
             elif section.key == "eeo_voluntary" and not v:
                 v = EEO_DEFAULT
             values[f"{section.key}.{f.key}"] = "" if v is None else str(v)
@@ -232,6 +242,8 @@ def save_profile(form: dict[str, str]) -> tuple[dict, dict[str, str]]:
                     data.setdefault(f.key, "")  # empty input keeps the saved password
             elif f.kind == "lines":
                 data[f.key] = _split_lines(raw)
+            elif f.kind == "select":
+                data[f.key] = raw if raw in {o for o, _ in f.options} else f.options[0][0]
             elif f.kind == "choice":
                 if raw == OTHER:
                     raw = (form.get(f"{name}.other") or "").strip()

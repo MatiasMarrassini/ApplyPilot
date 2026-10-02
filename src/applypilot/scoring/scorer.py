@@ -40,10 +40,38 @@ IMPORTANT FACTORS:
 - Factor in the candidate's project experience
 - Be realistic about experience level vs. job requirements (years of experience, seniority)
 
-RESPOND IN EXACTLY THIS FORMAT (no other text):
+LOCATION AND WORK ELIGIBILITY (check this before the skills score, using CANDIDATE LOCATION below):
+- Remote open to the candidate's country, to their region (e.g. Latin America) or worldwide: no penalty.
+- Remote restricted to a country or region where the candidate does not live ("US only", "must reside in the EU",
+  US/EU citizenship, security clearance, local work authorization, or no visa sponsorship when the candidate would need it):
+  score at most 3 and say so in the reasoning.
+- Onsite or hybrid in a city or country where the candidate does not live: score at most 4, unless relocation support is offered.
+- When the posting doesn't say where the hire must be, don't penalize.
+
+Write KEYWORDS and REASONING in {reasoning_language}. Keep technology and tool names as they appear in the posting.
+
+RESPOND IN EXACTLY THIS FORMAT (no other text, keep these English labels):
 SCORE: [1-10]
 KEYWORDS: [comma-separated ATS keywords from the job description that match or could match the candidate]
 REASONING: [2-3 sentences explaining the score]"""
+
+# The web UI is in Spanish, so the score explanation shown there is too.
+REASONING_LANGUAGE = "Spanish"
+
+
+def _candidate_location(profile: dict | None) -> str:
+    """One line telling the model where the candidate lives and can legally work."""
+    if not profile:
+        return "Unknown (do not apply location penalties)."
+    personal = profile.get("personal") or {}
+    auth = profile.get("work_authorization") or {}
+    place = ", ".join(p for p in (personal.get("city"), personal.get("province_state"), personal.get("country")) if p)
+    parts = [f"Lives in {place}." if place else "Location not given."]
+    if auth.get("work_permit_type"):
+        parts.append(f"Work permit: {auth['work_permit_type']}.")
+    if auth.get("require_sponsorship") not in (None, ""):
+        parts.append(f"Needs visa sponsorship to work abroad: {auth['require_sponsorship']}.")
+    return " ".join(parts)
 
 
 def _parse_score_response(response: str) -> dict:
@@ -75,12 +103,13 @@ def _parse_score_response(response: str) -> dict:
     return {"score": score, "keywords": keywords, "reasoning": reasoning}
 
 
-def score_job(resume_text: str, job: dict) -> dict:
+def score_job(resume_text: str, job: dict, profile: dict | None = None) -> dict:
     """Score a single job against the resume.
 
     Args:
         resume_text: The candidate's full resume text.
         job: Job dict with keys: title, site, location, full_description.
+        profile: User profile, used for the candidate's location and work eligibility.
 
     Returns:
         {"score": int, "keywords": str, "reasoning": str}
@@ -93,8 +122,11 @@ def score_job(resume_text: str, job: dict) -> dict:
     )
 
     messages = [
-        {"role": "system", "content": SCORE_PROMPT},
-        {"role": "user", "content": f"RESUME:\n{resume_text}\n\n---\n\nJOB POSTING:\n{job_text}"},
+        {"role": "system", "content": SCORE_PROMPT.replace("{reasoning_language}", REASONING_LANGUAGE)},
+        {"role": "user", "content": (
+            f"CANDIDATE LOCATION: {_candidate_location(profile)}\n\n"
+            f"RESUME:\n{resume_text}\n\n---\n\nJOB POSTING:\n{job_text}"
+        )},
     ]
 
     try:
@@ -117,6 +149,10 @@ def run_scoring(limit: int = 0, rescore: bool = False) -> dict:
         {"scored": int, "errors": int, "elapsed": float, "distribution": list}
     """
     resume_text = RESUME_PATH.read_text(encoding="utf-8")
+    try:
+        profile = load_profile()
+    except FileNotFoundError:
+        profile = None  # scoring still works, just without location rules
     conn = get_connection()
 
     if rescore:
@@ -145,7 +181,7 @@ def run_scoring(limit: int = 0, rescore: bool = False) -> dict:
     consecutive_errors = 0
     last_error = ""
     for job in jobs:
-        result = score_job(resume_text, job)
+        result = score_job(resume_text, job, profile)
         result["url"] = job["url"]
         completed += 1
 

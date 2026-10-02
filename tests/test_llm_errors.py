@@ -46,7 +46,7 @@ def jobs_db(monkeypatch):
 def test_scoring_stops_after_repeated_failures_and_keeps_jobs_unscored(jobs_db, monkeypatch):
     calls = []
 
-    def failing(resume, job):
+    def failing(resume, job, profile=None):
         calls.append(job["url"])
         return {"score": 0, "keywords": "", "reasoning": "LLM error: x", "error": "HTTP 400: bad model"}
 
@@ -58,7 +58,7 @@ def test_scoring_stops_after_repeated_failures_and_keeps_jobs_unscored(jobs_db, 
 
 
 def test_occasional_failure_is_skipped_not_saved_as_zero(jobs_db, monkeypatch):
-    def flaky(resume, job):
+    def flaky(resume, job, profile=None):
         if job["url"].endswith("/2"):
             return {"score": 0, "keywords": "", "reasoning": "LLM error: x", "error": "timeout"}
         return {"score": 8, "keywords": "py", "reasoning": "ok"}

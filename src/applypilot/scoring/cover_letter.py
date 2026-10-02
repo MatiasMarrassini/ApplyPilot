@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 
 from applypilot.applications import COVER_LETTER_FILE, application_dir, company_for_prompt
 from applypilot.config import RESUME_PATH, load_profile
+from applypilot.languages import LANGUAGE_NAMES, LETTER_GREETING, LETTER_OPENINGS, document_language
 from applypilot.database import get_connection, get_jobs_by_stage
 from applypilot.llm import get_client
 from applypilot.scoring.validator import (
@@ -28,7 +29,7 @@ MAX_ATTEMPTS = 5  # max cross-run retries before giving up
 
 # ── Prompt Builder (profile-driven) ──────────────────────────────────────
 
-def _build_cover_letter_prompt(profile: dict) -> str:
+def _build_cover_letter_prompt(profile: dict, lang: str = "en") -> str:
     """Build the cover letter system prompt from the user's profile.
 
     All personal data, skills, and sign-off name come from the profile.
@@ -65,7 +66,14 @@ def _build_cover_letter_prompt(profile: dict) -> str:
     all_banned = ", ".join(f'"{w}"' for w in BANNED_WORDS)
     leak_banned = ", ".join(f'"{p}"' for p in LLM_LEAK_PHRASES)
 
+    language = LANGUAGE_NAMES[lang]
+    greeting = LETTER_GREETING[lang]
+    closing = ('"Quedo a disposición para ampliar cualquiera de estos puntos." or "Hablemos."' if lang == "es"
+               else "\"Happy to walk through any of this in more detail.\" or \"Let's discuss.\"")
+
     return f"""Write a cover letter for {sign_off_name}. The goal is to get an interview.
+
+LANGUAGE: Write the whole letter in {language}, the language of the job posting. Keep tool, product and company names as they are.
 
 STRUCTURE: 3 short paragraphs. Under 250 words. Every sentence must earn its place.
 
@@ -73,7 +81,7 @@ PARAGRAPH 1 (2-3 sentences): Open with a specific thing YOU built that solves TH
 
 PARAGRAPH 2 (3-4 sentences): Pick 2 achievements from the resume that are MOST relevant to THIS job. Use numbers. Frame as solving their problem, not listing your accomplishments.{projects_hint}{metrics_hint}
 
-PARAGRAPH 3 (1-2 sentences): One specific thing about the company from the job description (a product, a technical challenge, a team structure). Then close. "Happy to walk through any of this in more detail." or "Let's discuss." Nothing else.
+PARAGRAPH 3 (1-2 sentences): One specific thing about the company from the job description (a product, a technical challenge, a team structure). Then close. {closing} Nothing else.
 
 BANNED WORDS AND PHRASES (automated validator rejects ANY of these — do not use even once):
 {all_banned}
@@ -97,22 +105,22 @@ Do NOT mention ANY tool not in this list. If the job asks for tools not listed, 
 Sign off: just "{sign_off_name}"
 
 Output ONLY the letter text. No subject lines. No "Here is the cover letter:" preamble. No notes after the sign-off.
-Start DIRECTLY with "Dear Hiring Manager," and end with the name."""
+Start DIRECTLY with "{greeting}" and end with the name."""
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
 def _strip_preamble(text: str) -> str:
-    """Remove LLM preamble before 'Dear Hiring Manager,' if present.
+    """Remove LLM preamble before the greeting ('Dear ...' / 'Estimado ...') if present.
 
     Gemini and other models sometimes output "Here is the cover letter:" or
     similar meta-commentary before the actual letter text. Strip everything
-    before the first occurrence of "Dear" so the validator's start-check passes.
+    before the first greeting so the validator's start-check passes.
     """
-    dear_idx = text.lower().find("dear")
-    if dear_idx > 0:
-        return text[dear_idx:]
-    return text
+    lower = text.lower()
+    found = [i for i in (lower.find(o) for o in LETTER_OPENINGS) if i >= 0]
+    start = min(found) if found else 0
+    return text[start:] if start > 0 else text
 
 
 # ── Core Generation ──────────────────────────────────────────────────────
@@ -146,7 +154,7 @@ def generate_cover_letter(
     avoid_notes: list[str] = []
     letter = ""
     client = get_client()
-    cl_prompt_base = _build_cover_letter_prompt(profile)
+    cl_prompt_base = _build_cover_letter_prompt(profile, document_language(job, profile))
 
     for attempt in range(max_retries + 1):
         # Fresh conversation every attempt

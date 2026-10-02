@@ -14,6 +14,8 @@ lenient -- banned words ignored; only fabrication and required structure checked
 import re
 import logging
 
+from applypilot.languages import LETTER_OPENINGS
+
 log = logging.getLogger(__name__)
 
 
@@ -73,6 +75,16 @@ REQUIRED_SECTIONS: set[str] = {"SUMMARY", "TECHNICAL SKILLS", "EXPERIENCE", "PRO
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
+def _watchlist_for(profile: dict) -> set[str]:
+    """Fabrication watchlist minus anything the user really knows.
+
+    The list is generic ("c#", "django", ...), so a C# developer would otherwise
+    have every tailored resume rejected as fabricated.
+    """
+    known = _build_skills_set(profile)
+    return {w for w in FABRICATION_WATCHLIST if not any(w in skill for skill in known)}
+
+
 def _build_skills_set(profile: dict) -> set[str]:
     """Build the set of allowed skills from the profile's skills_boundary."""
     boundary = profile.get("skills_boundary", {})
@@ -126,7 +138,7 @@ def validate_json_fields(data: dict, profile: dict, mode: str = "normal") -> dic
     # Skills: check for fabrication (always enforced)
     if isinstance(data["skills"], dict):
         skills_text = " ".join(str(v) for v in data["skills"].values()).lower()
-        for fake in FABRICATION_WATCHLIST:
+        for fake in _watchlist_for(profile):
             if len(fake) <= 2:
                 continue
             if fake in skills_text:
@@ -204,11 +216,12 @@ def validate_tailored_resume(text: str, profile: dict, original_text: str = "") 
 
     # 1. Check required sections exist (flexible matching)
     section_variants: dict[str, list[str]] = {
-        "SUMMARY": ["summary", "professional summary", "profile"],
-        "TECHNICAL SKILLS": ["technical skills", "skills", "tech stack", "core skills", "technologies"],
-        "EXPERIENCE": ["experience", "work experience", "professional experience"],
-        "PROJECTS": ["projects", "personal projects", "key projects", "selected projects"],
-        "EDUCATION": ["education", "academic background"],
+        "SUMMARY": ["summary", "professional summary", "profile", "perfil profesional", "resumen"],
+        "TECHNICAL SKILLS": ["technical skills", "skills", "tech stack", "core skills", "technologies",
+                             "habilidades técnicas", "habilidades"],
+        "EXPERIENCE": ["experience", "work experience", "professional experience", "experiencia"],
+        "PROJECTS": ["projects", "personal projects", "key projects", "selected projects", "proyectos"],
+        "EDUCATION": ["education", "academic background", "educación", "formación"],
     }
     for section, variants in section_variants.items():
         if not any(v in text_lower for v in variants):
@@ -244,10 +257,15 @@ def validate_tailored_resume(text: str, profile: dict, original_text: str = "") 
 
     # 7. Scan TECHNICAL SKILLS section for fabricated tools
     skills_start = text_lower.find("technical skills")
-    skills_end = text_lower.find("experience", skills_start) if skills_start != -1 else -1
+    if skills_start == -1:
+        skills_start = text_lower.find("habilidades técnicas")
+    skills_end = -1
+    if skills_start != -1:
+        ends = [i for i in (text_lower.find("experience", skills_start), text_lower.find("experiencia", skills_start)) if i != -1]
+        skills_end = min(ends) if ends else -1
     if skills_start != -1 and skills_end != -1:
         skills_block = text_lower[skills_start:skills_end]
-        for fake in FABRICATION_WATCHLIST:
+        for fake in _watchlist_for(profile):
             if len(fake) <= 2:
                 continue
             if fake in skills_block:
@@ -256,7 +274,7 @@ def validate_tailored_resume(text: str, profile: dict, original_text: str = "") 
     # 8. Scan full document for fabrication watchlist items not in original
     if original_text:
         original_lower = original_text.lower()
-        for fake in FABRICATION_WATCHLIST:
+        for fake in _watchlist_for(profile):
             if len(fake) <= 2:
                 continue
             if fake in text_lower and fake not in original_lower:
@@ -337,9 +355,9 @@ def validate_cover_letter(text: str, mode: str = "normal") -> dict:
     if found_leaks:
         errors.append(f"LLM self-talk: '{found_leaks[0]}'")
 
-    # 5. Must start with "Dear" — always checked (preamble should have been stripped)
+    # 5. Must start with a greeting — always checked (preamble should have been stripped)
     stripped = text.strip()
-    if not stripped.lower().startswith("dear"):
-        errors.append("Must start with 'Dear Hiring Manager,'")
+    if not stripped.lower().startswith(LETTER_OPENINGS):
+        errors.append("Must start with the greeting ('Dear Hiring Manager,' or 'Estimado equipo de selección:')")
 
     return {"passed": len(errors) == 0, "errors": errors, "warnings": warnings}
