@@ -70,6 +70,29 @@ def test_occasional_failure_is_skipped_not_saved_as_zero(jobs_db, monkeypatch):
     assert row[0] is None  # retried next run
 
 
+def test_job_without_title_is_scored(jobs_db, monkeypatch):
+    # Some scraped listings (e.g. WeWorkRemotely ad links) have no title.
+    jobs_db.execute("UPDATE jobs SET title = NULL WHERE url = 'https://x/1'")
+    jobs_db.commit()
+    monkeypatch.setattr(scorer, "score_job", lambda resume, job, profile=None:
+                        {"score": 6, "keywords": "", "reasoning": "ok"})
+    result = scorer.run_scoring()
+    assert result["scored"] == 5
+
+
+def test_scores_are_saved_as_they_come_in(jobs_db, monkeypatch):
+    def crash_on_third(resume, job, profile=None):
+        if job["url"].endswith("/3"):
+            raise KeyboardInterrupt  # run stopped mid-way (Detener, Ctrl+C, a bug)
+        return {"score": 7, "keywords": "", "reasoning": "ok"}
+
+    monkeypatch.setattr(scorer, "score_job", crash_on_third)
+    with pytest.raises(KeyboardInterrupt):
+        scorer.run_scoring()
+    scored = get_connection().execute("SELECT COUNT(*) FROM jobs WHERE fit_score IS NOT NULL").fetchone()[0]
+    assert scored == 3  # jobs scored before the stop aren't lost
+
+
 def test_init_db_clears_fake_zero_scores(jobs_db):
     jobs_db.execute("UPDATE jobs SET fit_score = 0, score_reasoning = '\nLLM error: 400' WHERE url = 'https://x/0'")
     jobs_db.execute("UPDATE jobs SET fit_score = 3, score_reasoning = 'real' WHERE url = 'https://x/1'")

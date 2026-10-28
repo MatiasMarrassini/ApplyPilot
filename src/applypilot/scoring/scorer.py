@@ -184,12 +184,13 @@ def run_scoring(limit: int = 0, rescore: bool = False) -> dict:
         result = score_job(resume_text, job, profile)
         result["url"] = job["url"]
         completed += 1
+        title = (job.get("title") or "?")[:60]  # some scraped listings have no title
 
         if result.get("error"):
             errors += 1
             consecutive_errors += 1
             last_error = result["error"]
-            log.info("[%d/%d] ERROR  %s", completed, len(jobs), job.get("title", "?")[:60])
+            log.info("[%d/%d] ERROR  %s", completed, len(jobs), title)
             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
                 log.error("Stopping scoring after %d failed LLM calls in a row. Last error: %s",
                           consecutive_errors, last_error)
@@ -198,20 +199,16 @@ def run_scoring(limit: int = 0, rescore: bool = False) -> dict:
 
         consecutive_errors = 0
         results.append(result)
-        log.info(
-            "[%d/%d] score=%d  %s",
-            completed, len(jobs), result["score"], job.get("title", "?")[:60],
-        )
-
-    # Write scores to DB. Failed calls are not written, so those jobs stay
-    # unscored and get retried on the next run instead of being stuck at 0.
-    now = datetime.now(timezone.utc).isoformat()
-    for r in results:
+        # Save each score right away so a stopped or crashed run keeps its work.
+        # Failed calls are not written, so those jobs stay unscored and get
+        # retried on the next run instead of being stuck at 0.
         conn.execute(
             "UPDATE jobs SET fit_score = ?, score_reasoning = ?, scored_at = ? WHERE url = ?",
-            (r["score"], f"{r['keywords']}\n{r['reasoning']}", now, r["url"]),
+            (result["score"], f"{result['keywords']}\n{result['reasoning']}",
+             datetime.now(timezone.utc).isoformat(), result["url"]),
         )
-    conn.commit()
+        conn.commit()
+        log.info("[%d/%d] score=%d  %s", completed, len(jobs), result["score"], title)
 
     elapsed = time.time() - t0
     log.info("Done: %d scored in %.1fs (%.1f jobs/sec)", len(results), elapsed, len(results) / elapsed if elapsed > 0 else 0)
