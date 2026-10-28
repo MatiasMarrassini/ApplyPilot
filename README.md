@@ -27,12 +27,12 @@ Full list in the [CHANGELOG](CHANGELOG.md).
 
 ## Quick start
 
-Requires Python 3.11+ and Git. The web UI lives on the `feature/web-ui` branch.
+Requires Python 3.11+ and Git.
 
 Windows (PowerShell):
 
 ```powershell
-git clone -b feature/web-ui https://github.com/MatiasMarrassini/ApplyPilot.git
+git clone https://github.com/MatiasMarrassini/ApplyPilot.git
 cd ApplyPilot
 python -m venv .venv
 .venv\Scripts\Activate.ps1
